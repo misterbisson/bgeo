@@ -8,55 +8,20 @@ class bGeo_Admin extends bGeo
 	public function __construct()
 	{
 		add_action( 'admin_init', array( $this , 'admin_init' ) );
+
+		add_action( 'created_term', array( $this , 'edited_term' ), 5, 3 );
+		add_action( 'edited_term', array( $this , 'edited_term' ), 5, 3 );
+
+		//add_action( $taxonomy . '_edit_form_fields', array( $this , 'edited_term' ), 5, 2 );
+		add_action( 'post_tag_edit_form_fields', array( $this , 'metabox' ), 5, 2 );
 	}
 
 	public function admin_init()
 	{
-		global $pagenow;
-
-		// only continue if we're on a page related to our post type
-		// is there a better way to do this?
-		if ( 
-			! ( // matches the new post page
-				'post-new.php' == $pagenow &&
-				isset ( $_GET['post_type'] ) && 
-				$this->post_type_name == $_GET['post_type'] 
-			) &&
-			! ( // matches the editor for our post type
-				'post.php' == $pagenow &&
-				isset ( $_GET['post'] ) && 
-				$this->get_post( $_GET['post'] ) 
-			) 
-		)
-		{
-			return;
-		}
-
 		// add any JS or CSS for the needed for the dashboard
 		add_action( 'admin_enqueue_scripts', array( $this , 'admin_enqueue_scripts' ) );
 
 		$this->upgrade();
-	}
-
-	public function upgrade()
-	{
-		$options = get_option( $this->post_type_name );
-
-		// initial activation and default options
-		if( ! isset( $options['version'] ) )
-		{
-			$this->init_partsofspeech();
-
-			// init the var
-			$options = array();
-
-			// set the options
-			$options['active'] = TRUE;
-			$options['version'] = $this->version;
-		}
-
-		// replace the old options with the new ones
-		update_option( $this->post_type_name, $options );
 	}
 
 	// register and enqueue any scripts needed for the dashboard
@@ -79,6 +44,11 @@ class bGeo_Admin extends bGeo
 		return wp_verify_nonce( $_POST[ $this->id_base .'-nonce' ] , plugin_basename( __FILE__ ));
 	}
 
+	public function edited_term( $field_name )
+	{
+		return $this->id_base . '[' . $field_name . ']';
+	}
+
 	public function get_field_name( $field_name )
 	{
 		return $this->id_base . '[' . $field_name . ']';
@@ -89,8 +59,8 @@ class bGeo_Admin extends bGeo
 		return $this->id_base . '-' . $field_name;
 	}
 
-	// the Details metabox
-	public function metabox_details( $post )
+	// the metabox
+	public function metabox( $post )
 	{
 		// must have this on the page in one of the metaboxes
 		// the nonce is then checked in $this->save_post()
@@ -111,14 +81,56 @@ class bGeo_Admin extends bGeo
 
 		// when saved, the form elements will be passed to 
 		// $this->save_post(), which simply checks permissions and 
-		// captures the $_POST var, and then to go_analyst()->update_meta(),
+		// captures the $_POST var, and then to bgeo()->update_meta(),
 		// where the data is sanitized and validated before saving
 	}
 
-	// register our metaboxes
-	public function metaboxes()
+	public function upgrade()
 	{
-		add_meta_box( $this->get_field_id( 'details' ), 'Details', array( $this, 'metabox_details' ), $this->post_type_name , 'normal', 'default' );
+		$options = get_option( $this->id_base );
+
+		// initial activation and default options
+		if( ! isset( $options['version'] ) )
+		{
+			// create the table
+			$this->create_table();
+
+			// set the options
+			$options['version'] = $this->version;
+		}
+
+		// replace the old options with the new ones
+		update_option( $this->id_base , $options );
 	}
 
-}//end GO_Analyst_Admin class
+	function create_table()
+	{
+		$charset_collate = '';
+		if ( version_compare( mysql_get_server_info() , '4.1.0', '>=' ))
+		{
+			if ( ! empty( $this->wpdb->charset ))
+			{
+				$charset_collate = 'DEFAULT CHARACTER SET '. $this->wpdb->charset;
+			}
+			if ( ! empty( $this->wpdb->collate ))
+			{
+				$charset_collate .= ' COLLATE '. $this->wpdb->collate;
+			}
+		}
+
+		require_once ABSPATH . 'wp-admin/upgrade-functions.php';
+
+		dbDelta("
+			CREATE TABLE $this->table (
+				`term_taxonomy_id` bigint(20) unsigned NOT NULL,
+				`point` point NOT NULL DEFAULT '',
+				`poly` polygon NOT NULL DEFAULT '',
+				`area` int(10) unsigned NOT NULL,
+				PRIMARY KEY (`term_taxonomy_id`),
+				SPATIAL KEY `point` (`point`),
+				SPATIAL KEY `poly` (`poly`)
+			) ENGINE=MyISAM $charset_collate
+		");
+	}
+
+}//end bGeo_Admin class

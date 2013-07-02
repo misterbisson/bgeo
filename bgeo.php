@@ -10,4 +10,4 @@ Author URI: http://maisonbisson.com/
 
 // include and activate the core components
 require_once __DIR__ . '/components/class-bgeo.php';
-bdefinite();
+bgeo();
