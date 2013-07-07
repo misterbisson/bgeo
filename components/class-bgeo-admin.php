@@ -11,6 +11,7 @@ class bGeo_Admin extends bGeo
 
 		add_action( 'created_term', array( $this , 'edited_term' ), 5, 3 );
 		add_action( 'edited_term', array( $this , 'edited_term' ), 5, 3 );
+		add_action( 'delete_term', array( $this , 'delete_term' ), 5, 4 );
 
 		//add_action( $taxonomy . '_edit_form_fields', array( $this , 'edited_term' ), 5, 2 );
 		add_action( 'post_tag_edit_form_fields', array( $this , 'metabox' ), 5, 2 );
@@ -29,7 +30,7 @@ class bGeo_Admin extends bGeo
 	{
 		wp_register_style( $this->id_base . '-admin' , bgeo()->plugin_url . '/css/' . $this->id_base . '-admin.css' , array( $this->id_base . '-leaflet' ) , $this->version );
 		wp_enqueue_style( $this->id_base . '-admin' );
-		
+
 		wp_register_script( $this->id_base . '-admin', bgeo()->plugin_url . '/js/' . $this->id_base . '-admin.js', array( $this->id_base . '-leaflet' ), $this->version, TRUE );
 		wp_enqueue_script( $this->id_base . '-admin');
 
@@ -71,10 +72,21 @@ class bGeo_Admin extends bGeo
 			return;
 		}
 
-var_dump( $term_id, $tt_id, $taxonomy );
-
 		// save it
 		$this->update_geo( $term_id, $taxonomy, stripslashes_deep( $_POST[ $this->id_base ] ) );
+	}
+
+	public function delete_term( $term, $tt_id, $taxonomy, $deleted_term )
+	{
+		// check the permissions
+		$tax = get_taxonomy( $taxonomy );
+		if( ! current_user_can( $tax->cap->edit_terms ) )
+		{
+			return;
+		}
+
+		// delete it
+		$this->delete_geo( $term_id, $taxonomy, $deleted_term );
 	}
 
 	// the metabox
@@ -84,7 +96,7 @@ var_dump( $term_id, $tt_id, $taxonomy );
 		// the nonce is then checked in $this->save_post()
 		$this->nonce_field();
 
-		// add the form elements you want to use here. 
+		// add the form elements you want to use here.
 		// these are regular html form elements, but use $this->get_field_name( 'name' ) and $this->get_field_id( 'name' ) to identify them
 
 		include_once __DIR__ . '/templates/metabox-details.php';
@@ -97,8 +109,8 @@ var_dump( $term_id, $tt_id, $taxonomy );
 		// http://codex.wordpress.org/Function_Reference/checked
 		// there are other convenience methods in WP, as well
 
-		// when saved, the form elements will be passed to 
-		// $this->save_post(), which simply checks permissions and 
+		// when saved, the form elements will be passed to
+		// $this->save_post(), which simply checks permissions and
 		// captures the $_POST var, and then to bgeo()->update_meta(),
 		// where the data is sanitized and validated before saving
 	}
@@ -146,7 +158,7 @@ $this->create_table();
 			CREATE TABLE " . bgeo()->table . " (
 				`term_taxonomy_id` bigint(20) unsigned NOT NULL,
 				`point` point NOT NULL DEFAULT '',
-				`bounds` linestring NOT NULL DEFAULT '',
+				`bounds` polygon NOT NULL DEFAULT '',
 				`area` int(10) unsigned NOT NULL,
 				`woeid` int(10) unsigned NOT NULL,
 				PRIMARY KEY (`term_taxonomy_id`),

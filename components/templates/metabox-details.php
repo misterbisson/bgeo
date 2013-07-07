@@ -1,6 +1,6 @@
 <?php
 /**
- * html for the Details metabox. 
+ * html for the Details metabox.
  * The context is the bDefinite_Admin class, where $post is set.
  */
 
