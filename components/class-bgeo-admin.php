@@ -78,7 +78,7 @@ var_dump( $term_id, $tt_id, $taxonomy );
 	}
 
 	// the metabox
-	public function metabox( $post )
+	public function metabox( $tag, $taxonomy )
 	{
 		// must have this on the page in one of the metaboxes
 		// the nonce is then checked in $this->save_post()
@@ -107,7 +107,7 @@ var_dump( $term_id, $tt_id, $taxonomy );
 	{
 		$options = get_option( $this->id_base );
 
-			$this->create_table();
+$this->create_table();
 
 		// initial activation and default options
 		if( ! isset( $options['version'] ) )
@@ -146,7 +146,7 @@ var_dump( $term_id, $tt_id, $taxonomy );
 			CREATE TABLE " . bgeo()->table . " (
 				`term_taxonomy_id` bigint(20) unsigned NOT NULL,
 				`point` point NOT NULL DEFAULT '',
-				`ring` linestring NOT NULL DEFAULT '',
+				`bounds` linestring NOT NULL DEFAULT '',
 				`area` int(10) unsigned NOT NULL,
 				`woeid` int(10) unsigned NOT NULL,
 				PRIMARY KEY (`term_taxonomy_id`),
