@@ -27,11 +27,12 @@ class bGeo_Admin extends bGeo
 	// register and enqueue any scripts needed for the dashboard
 	public function admin_enqueue_scripts()
 	{
-		wp_register_style( $this->id_base . '-admin' , $this->plugin_url . '/css/' . $this->id_base . '-admin.css' , array() , $this->version );
+		wp_register_style( $this->id_base . '-admin' , bgeo()->plugin_url . '/css/' . $this->id_base . '-admin.css' , array( $this->id_base . '-leaflet' ) , $this->version );
 		wp_enqueue_style( $this->id_base . '-admin' );
 		
-		wp_register_script( $this->id_base . '-admin', $this->plugin_url . '/js/' . $this->id_base . '-admin.js', array( 'jquery' ), $this->version, true );
+		wp_register_script( $this->id_base . '-admin', bgeo()->plugin_url . '/js/' . $this->id_base . '-admin.js', array( $this->id_base . '-leaflet' ), $this->version, TRUE );
 		wp_enqueue_script( $this->id_base . '-admin');
+
 	}//end admin_enqueue_scripts
 
 	public function nonce_field()
@@ -44,11 +45,6 @@ class bGeo_Admin extends bGeo
 		return wp_verify_nonce( $_POST[ $this->id_base .'-nonce' ] , plugin_basename( __FILE__ ));
 	}
 
-	public function edited_term( $field_name )
-	{
-		return $this->id_base . '[' . $field_name . ']';
-	}
-
 	public function get_field_name( $field_name )
 	{
 		return $this->id_base . '[' . $field_name . ']';
@@ -57,6 +53,28 @@ class bGeo_Admin extends bGeo
 	public function get_field_id( $field_name )
 	{
 		return $this->id_base . '-' . $field_name;
+	}
+
+	public function edited_term( $term_id, $tt_id, $taxonomy )
+	{
+
+		// check the nonce
+		if( ! $this->verify_nonce() )
+		{
+			return;
+		}
+
+		// check the permissions
+		$tax = get_taxonomy( $taxonomy );
+		if( ! current_user_can( $tax->cap->edit_terms ) )
+		{
+			return;
+		}
+
+var_dump( $term_id, $tt_id, $taxonomy );
+
+		// save it
+		$this->update_geo( $term_id, $taxonomy, stripslashes_deep( $_POST[ $this->id_base ] ) );
 	}
 
 	// the metabox
@@ -89,6 +107,8 @@ class bGeo_Admin extends bGeo
 	{
 		$options = get_option( $this->id_base );
 
+			$this->create_table();
+
 		// initial activation and default options
 		if( ! isset( $options['version'] ) )
 		{
@@ -105,27 +125,30 @@ class bGeo_Admin extends bGeo
 
 	function create_table()
 	{
+		global $wpdb;
+
 		$charset_collate = '';
 		if ( version_compare( mysql_get_server_info() , '4.1.0', '>=' ))
 		{
-			if ( ! empty( $this->wpdb->charset ))
+			if ( ! empty( $wpdb->charset ))
 			{
-				$charset_collate = 'DEFAULT CHARACTER SET '. $this->wpdb->charset;
+				$charset_collate = 'DEFAULT CHARACTER SET '. $wpdb->charset;
 			}
-			if ( ! empty( $this->wpdb->collate ))
+			if ( ! empty( $wpdb->collate ))
 			{
-				$charset_collate .= ' COLLATE '. $this->wpdb->collate;
+				$charset_collate .= ' COLLATE '. $wpdb->collate;
 			}
 		}
 
 		require_once ABSPATH . 'wp-admin/upgrade-functions.php';
 
 		dbDelta("
-			CREATE TABLE $this->table (
+			CREATE TABLE " . bgeo()->table . " (
 				`term_taxonomy_id` bigint(20) unsigned NOT NULL,
 				`point` point NOT NULL DEFAULT '',
-				`poly` polygon NOT NULL DEFAULT '',
+				`ring` linestring NOT NULL DEFAULT '',
 				`area` int(10) unsigned NOT NULL,
+				`woeid` int(10) unsigned NOT NULL,
 				PRIMARY KEY (`term_taxonomy_id`),
 				SPATIAL KEY `point` (`point`),
 				SPATIAL KEY `poly` (`poly`)

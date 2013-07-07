@@ -1,3 +1,7 @@
 /*
  * style to alter the edit panel
  */
+
+#bgeo-map { 
+	height: 180px;
+}
