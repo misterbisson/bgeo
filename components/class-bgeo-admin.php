@@ -12,9 +12,6 @@ class bGeo_Admin extends bGeo
 		add_action( 'created_term', array( $this , 'edited_term' ), 5, 3 );
 		add_action( 'edited_term', array( $this , 'edited_term' ), 5, 3 );
 		add_action( 'delete_term', array( $this , 'delete_term' ), 5, 4 );
-
-		//add_action( $taxonomy . '_edit_form_fields', array( $this , 'edited_term' ), 5, 2 );
-		add_action( 'post_tag_edit_form_fields', array( $this , 'metabox' ), 5, 2 );
 	}
 
 	public function admin_init()
@@ -23,6 +20,12 @@ class bGeo_Admin extends bGeo
 		add_action( 'admin_enqueue_scripts', array( $this , 'admin_enqueue_scripts' ) );
 
 		$this->upgrade();
+
+		//add the geo metabox to each of the taxonomies we're registered against
+		foreach ( bgeo()->options['taxonomies'] as $taxonomy )
+		{
+			add_action( $taxonomy . '_edit_form_fields', array( $this , 'metabox' ), 5, 2 );
+		}
 	}
 
 	// register and enqueue any scripts needed for the dashboard

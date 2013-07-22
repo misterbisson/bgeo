@@ -10,13 +10,25 @@ https://github.com/misterbisson/geoPHP
 
 class bGeo
 {
-	public $admin = FALSE; // the admin object
-	public $tools = FALSE; // the tools object
-	public $geophp_loaded = FALSE; // is the geoPHP converter loaded?
-	public $table = FALSE;
-	public $plugin_url = FALSE;
 	public $version = 1;
 	public $id_base = 'bgeo';
+	public $table = FALSE;
+	public $plugin_url = FALSE;
+	public $geo_taxonomy_name = 'bgeo_tags';
+
+	public $admin = FALSE; // the admin object
+	public $tools = FALSE; // the tools object
+	public $yboss = FALSE; // the yboss object
+	public $geophp_loaded = FALSE; // is the geoPHP converter loaded?
+
+	public $options = array(
+		'taxonomies' => array(
+			'category',
+			'post_tag',
+		),
+		'register_geo_taxonomy' => TRUE,
+		'yboss_key' => FALSE,
+	);
 
 	public function __construct()
 	{
@@ -31,9 +43,25 @@ class bGeo
 		// enqueue the registered scripts and styles
 		add_action( 'enqueue_scripts', array( $this , 'enqueue_scripts' ), 1, 1 );
 
+		// get options with defaults to figure out what components to activate
+		$this->options = apply_filters(
+			'go_config',
+			$this->options,
+			'bgeo'
+		);
+
+		// add our custom geo taxonomy to the list of supported taxonomies
+		if( $this->options['register_geo_taxonomy'] )
+		{
+			$this->options['taxonomies'][] = $this->geo_taxonomy_name;
+		}
+
+		$this->options['taxonomies'] = array_unique( $this->options['taxonomies'] );
+
 		if ( is_admin() )
 		{
 			$this->admin();
+			$this->yboss();
 		}
 
 	} // END __construct
@@ -44,6 +72,19 @@ class bGeo
 		// see http://leafletjs.com for more info
 		wp_register_style( $this->id_base . '-leaflet' , $this->plugin_url . '/external/leaflet/leaflet.css' , array() , $this->version );
 		wp_register_script( $this->id_base . '-leaflet', $this->plugin_url . '/external/leaflet/leaflet.js', array( 'jquery' ), $this->version, TRUE );
+
+		// add our custom geo taxonomy to the list of supported taxonomies
+		if( $this->options['register_geo_taxonomy'] )
+		{
+			$this->register_taxonomy();
+		}
+
+		if ( is_admin() )
+		{
+			// attempt to load the go-opencalais integration
+			// there's a conditional in the following method that checks if the other plugin exists
+			$this->go_opencalais();
+		}
 	}
 
 	// a singleton for the admin object
@@ -69,6 +110,37 @@ class bGeo
 
 		return $this->tools;
 	} // END tools
+
+	// a singleton for the yboss object
+	public function yboss()
+	{
+		if ( ! $this->yboss )
+		{
+			require_once __DIR__ . '/class-bgeo-yboss.php';
+			$this->yboss = new bGeo_Yboss();
+		}
+
+		return $this->yboss;
+	} // END yboss
+
+	// a singleton for the go_opencalais integration object
+	public function go_opencalais()
+	{
+
+		// sanity check to make sure the go-opencalais plugin is loaded
+		if ( ! function_exists( 'go_opencalais' ) )
+		{
+			return FALSE;
+		}
+
+		if ( ! $this->go_opencalais )
+		{
+			require_once __DIR__ . '/class-bgeo-go-opencalais.php';
+			$this->yboss = new bGeo_GO_OpenCalais();
+		}
+
+		return $this->go_opencalais;
+	} // END go_opencalais
 
 	public function new_geometry( $input, $adapter )
 	{
@@ -136,18 +208,6 @@ class bGeo
 			'lat' => $envelope->components[0]->components[0]->y(),
 			'lon' => $envelope->components[0]->components[0]->x(),
 		);
-
-		/* not used by Leaflet, but preserved for others
-		$geo->bounds_nw = array(
-			'lat' => $envelope->components[0]->components[2]->y(),
-			'lon' => $envelope->components[0]->components[2]->x(),
-		);
-
-		$geo->bounds_sw = array(
-			'lat' => $envelope->components[0]->components[3]->y(),
-			'lon' => $envelope->components[0]->components[3]->x(),
-		);
-		*/
 
 		$geo->bounds = '{"type":"Feature","geometry":' . $bounds->out('json') . '}';
 
@@ -329,6 +389,41 @@ print_r( $wpdb );
 		// execute the query
 		return $wpdb->query( $sql );
 	}//end delete_geo
+
+	public function register_taxonomy()
+	{
+
+		$post_types = get_post_types( array( 'public' => TRUE , 'publicly_queryable' => TRUE , ) , 'names' , 'or' ); // trivia: 'pages' are public, but not publicly queryable
+
+		register_taxonomy( $this->geo_taxonomy_name, $post_types, array(
+			'label' => 'Geographies',
+			'labels' => array(
+				'singular_name' => 'Geography',
+				'menu_name' => 'Geographies',
+				'all_items' => 'All geographies',
+				'edit_item' => 'Edit geography',
+				'view_item' => 'View geography',
+				'update_item' => 'View geography',
+				'add_new_item' => 'Add geography',
+				'new_item_name' => 'New geography',
+				'search_items' => 'Search geographies',
+				'popular_items' => 'Popular geographies',
+				'separate_items_with_commas' => 'Separate geographies with commas',
+				'add_or_remove_items' => 'Add or remove geographies',
+				'choose_from_most_used' => 'Choose from most used geographies',
+				'not_found' => 'No geographies found',
+			),
+			// 'hierarchical' => TRUE,
+			'show_ui' => TRUE,
+			'show_admin_column' => TRUE,
+			'query_var' => TRUE,
+			'rewrite' => array(
+				'slug' => 'geography',
+				'with_front' => FALSE,
+			),
+		) );
+
+	} // END register_taxonomy
 
 	// enqueue the scripts and styles
 	public function enqueue_scripts()
