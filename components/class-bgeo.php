@@ -146,7 +146,7 @@ class bGeo
 	{
 		if ( ! $this->geophp_loaded )
 		{
-			require_once __DIR__ . '/external/geoPHP/geoPHP.inc';
+			require __DIR__ . '/external/geoPHP/geoPHP.inc';
 			$this->geophp_loaded = TRUE;
 		}
 
