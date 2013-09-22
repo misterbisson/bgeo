@@ -19,7 +19,6 @@ class bGeo
 	public $admin = FALSE; // the admin object
 	public $tools = FALSE; // the tools object
 	public $yboss = FALSE; // the yboss object
-	public $geophp_loaded = FALSE; // is the geoPHP converter loaded?
 
 	public $options = array(
 		'taxonomies' => array(
@@ -136,7 +135,7 @@ class bGeo
 		if ( ! $this->go_opencalais )
 		{
 			require_once __DIR__ . '/class-bgeo-go-opencalais.php';
-			$this->yboss = new bGeo_GO_OpenCalais();
+			$this->go_opencalais = new bGeo_GO_OpenCalais();
 		}
 
 		return $this->go_opencalais;
@@ -144,10 +143,10 @@ class bGeo
 
 	public function new_geometry( $input, $adapter )
 	{
-		if ( ! $this->geophp_loaded )
+		if ( ! class_exists( 'geoPHP' ) )
 		{
 			require_once __DIR__ . '/external/geoPHP/geoPHP.inc';
-			$this->geophp_loaded = TRUE;
+			geoPHP::geosInstalled( FALSE ); // prevents a fatal in some cases; @TODO: why?
 		}
 
 		return geoPHP::load( $input, $adapter );
