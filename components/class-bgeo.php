@@ -141,6 +141,8 @@ class bGeo
 		return $this->go_opencalais;
 	} // END go_opencalais
 
+	// get a new geometry object
+	// see https://github.com/phayes/geoPHP/wiki/API-Reference for docs on geoPHP
 	public function new_geometry( $input, $adapter )
 	{
 		if ( ! class_exists( 'geoPHP' ) )
