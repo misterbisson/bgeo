@@ -404,7 +404,7 @@ print_r( $wpdb );
 				'all_items' => 'All geographies',
 				'edit_item' => 'Edit geography',
 				'view_item' => 'View geography',
-				'update_item' => 'View geography',
+				'update_item' => 'Update geography',
 				'add_new_item' => 'Add geography',
 				'new_item_name' => 'New geography',
 				'search_items' => 'Search geographies',
