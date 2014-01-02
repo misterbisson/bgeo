@@ -22,6 +22,19 @@ class bGeo_Yboss extends bGeo
 		'29' => 'continent',
 		'31' => 'timezone',
 	);
+	public $woetype_rank = array(
+		'7'  => 8,
+		'8'  => 5,
+		'9'  => 6,
+		'10' => 7,
+		'11' => 10,
+		'12' => 3,
+		'19' => 1,
+		'22' => 9,
+		'24' => 4,
+		'29' => 2,
+		'31' => 0,
+	);
 
 	public function __construct()
 	{
