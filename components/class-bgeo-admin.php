@@ -122,8 +122,6 @@ class bGeo_Admin extends bGeo
 	{
 		$options = get_option( $this->id_base );
 
-$this->create_table();
-
 		// initial activation and default options
 		if( ! isset( $options['version'] ) )
 		{
@@ -161,12 +159,11 @@ $this->create_table();
 			CREATE TABLE " . bgeo()->table . " (
 				`term_taxonomy_id` bigint(20) unsigned NOT NULL,
 				`point` point NOT NULL DEFAULT '',
-				`bounds` polygon NOT NULL DEFAULT '',
+				`bounds` geometrycollection NOT NULL DEFAULT '',
 				`area` int(10) unsigned NOT NULL,
-				`woeid` int(10) unsigned NOT NULL,
 				PRIMARY KEY (`term_taxonomy_id`),
 				SPATIAL KEY `point` (`point`),
-				SPATIAL KEY `poly` (`poly`)
+				SPATIAL KEY `bounds` (`bounds`)
 			) ENGINE=MyISAM $charset_collate
 		");
 	}
