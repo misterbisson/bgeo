@@ -22,7 +22,7 @@ class bGeo_Admin extends bGeo
 		$this->upgrade();
 
 		//add the geo metabox to each of the taxonomies we're registered against
-		foreach ( bgeo()->options['taxonomies'] as $taxonomy )
+		foreach ( bgeo()->options()->taxonomies as $taxonomy )
 		{
 			add_action( $taxonomy . '_edit_form_fields', array( $this , 'metabox' ), 5, 2 );
 		}

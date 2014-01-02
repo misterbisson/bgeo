@@ -20,13 +20,13 @@ class bGeo
 	public $tools = FALSE; // the tools object
 	public $yboss = FALSE; // the yboss object
 
-	public $options = array(
+	public $options_default = array(
 		'taxonomies' => array(
 			'category',
 			'post_tag',
 		),
 		'register_geo_taxonomy' => TRUE,
-		'yboss_key' => FALSE,
+		'yahooapi' => FALSE,
 	);
 
 	public function __construct()
@@ -42,20 +42,13 @@ class bGeo
 		// enqueue the registered scripts and styles
 		add_action( 'enqueue_scripts', array( $this , 'enqueue_scripts' ), 1, 1 );
 
-		// get options with defaults to figure out what components to activate
-		$this->options = apply_filters(
-			'go_config',
-			$this->options,
-			'bgeo'
-		);
-
 		// add our custom geo taxonomy to the list of supported taxonomies
-		if( $this->options['register_geo_taxonomy'] )
+		if( $this->options()->register_geo_taxonomy )
 		{
-			$this->options['taxonomies'][] = $this->geo_taxonomy_name;
+			$this->options()->taxonomies[] = $this->geo_taxonomy_name;
 		}
 
-		$this->options['taxonomies'] = array_unique( $this->options['taxonomies'] );
+		$this->options()->taxonomies = array_unique( $this->options()->taxonomies );
 
 		if ( is_admin() )
 		{
@@ -73,7 +66,7 @@ class bGeo
 		wp_register_script( $this->id_base . '-leaflet', $this->plugin_url . '/external/leaflet/leaflet.js', array( 'jquery' ), $this->version, TRUE );
 
 		// add our custom geo taxonomy to the list of supported taxonomies
-		if( $this->options['register_geo_taxonomy'] )
+		if( $this->options()->register_geo_taxonomy )
 		{
 			$this->register_taxonomy();
 		}
@@ -125,7 +118,6 @@ class bGeo
 	// a singleton for the go_opencalais integration object
 	public function go_opencalais()
 	{
-
 		// sanity check to make sure the go-opencalais plugin is loaded
 		if ( ! function_exists( 'go_opencalais' ) )
 		{
@@ -140,6 +132,21 @@ class bGeo
 
 		return $this->go_opencalais;
 	} // END go_opencalais
+
+	// get options
+	public function options()
+	{
+		if ( ! $this->options )
+		{
+			$this->options = (object) apply_filters( 
+				'go_config',
+				$this->options_default,
+				$this->id_base
+			);
+		}
+
+		return $this->options;
+	} // END options
 
 	// get a new geometry object
 	// see https://github.com/phayes/geoPHP/wiki/API-Reference for docs on geoPHP
