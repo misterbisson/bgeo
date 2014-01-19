@@ -91,7 +91,6 @@ class bGeo_Yboss extends bGeo
 			array(
 				'q' => is_array( $query ) ? $query['q'] : $query,
 				'format' => 'json',
-				'count' => '50',
 			)
 		);
 
@@ -167,12 +166,15 @@ class bGeo_Yboss extends bGeo
 
 	public function boss_ajax()
 	{
+die;
 
-		$query = 'San Francisco site:en.wikipedia.org';
+		$query = 'NEW SIBERIAN ISLANDS site:en.wikipedia.org';
 
 		echo '<pre>';
 
-		print_r( $this->boss( $query ) );
+		print_r( $this->boss( array( 'q' => $query ), 'limitedweb' ) );
+		print_r( $this->errors );
+
 		die;
 	}
 
@@ -253,6 +255,7 @@ class bGeo_Yboss extends bGeo
 
 	public function placefinder_ajax()
 	{
+die;
 
 		$query = 'Aberdeen -98.522563831024 45.444191924201';
 		$query = 'NYC';
@@ -269,6 +272,8 @@ class bGeo_Yboss extends bGeo
 		echo '<pre>';
 
 		print_r( $this->placefinder( $query ) );
+		print_r( $this->errors );
+
 		die;
 	}
 
@@ -328,6 +333,7 @@ class bGeo_Yboss extends bGeo
 
 	public function yql_ajax()
 	{
+die;
 
 		$query = 'SELECT * FROM geo.placetypes(0)';
 		$query = 'SELECT * FROM geo.places.belongtos WHERE member_woeid ="23424756"';
@@ -335,6 +341,8 @@ class bGeo_Yboss extends bGeo
 		echo '<pre>';
 
 		print_r( $this->yql( $query ) );
+		print_r( $this->errors );
+
 		die;
 	}
 
