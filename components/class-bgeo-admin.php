@@ -99,6 +99,13 @@ class bGeo_Admin extends bGeo
 		// the nonce is then checked in $this->save_post()
 		$this->nonce_field();
 
+
+		if( empty( $tag ) || empty( $taxonomy ) )
+		{
+			echo 'No tag or taxonomy set.';
+			return;
+		}
+
 		// add the form elements you want to use here.
 		// these are regular html form elements, but use $this->get_field_name( 'name' ) and $this->get_field_id( 'name' ) to identify them
 

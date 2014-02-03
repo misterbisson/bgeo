@@ -174,7 +174,7 @@ class bGeo
 		global $wpdb;
 
 		$sql = $wpdb->prepare(
-			'SELECT AsText(point) AS point, AsText(bounds) AS bounds, area, woeid FROM ' . bgeo()->table . ' WHERE term_taxonomy_id = %d',
+			'SELECT AsText(point) AS point, AsText(bounds) AS bounds, area FROM ' . bgeo()->table . ' WHERE term_taxonomy_id = %d',
 			$term->term_taxonomy_id
 		);
 
@@ -320,8 +320,7 @@ print_r( $geo );
 				term_taxonomy_id,
 				point,
 				bounds,
-				area,
-				woeid
+				area
 			)
 			VALUES(
 				%1$d,
@@ -330,7 +329,7 @@ print_r( $geo );
 				%5$d,
 				%6$s
 			)
-			ON DUPLICATE KEY UPDATE point = VALUES( point ), bounds = VALUES( bounds ), area = VALUES( area ), woeid = VALUES( woeid )',
+			ON DUPLICATE KEY UPDATE point = VALUES( point ), bounds = VALUES( bounds ), area = VALUES( area )',
 			$term->term_taxonomy_id,
 			floatval( $geo['point_lon'] ),
 			floatval( $geo['point_lat'] ),

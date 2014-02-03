@@ -14,7 +14,6 @@ if( ! is_object( $geo ))
 		'point_lat' => NULL,
 		'point_lon' => NULL,
 		'bounds' => NULL,
-		'woeid' => NULL,
 	);
 }
 
