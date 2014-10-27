@@ -197,8 +197,15 @@ die;
 				return FALSE;
 			}
 
-			$args = array();
-			$args['q'] = $query;
+			if ( is_array( $query ) )
+			{
+				$args = $query;
+			}
+			else
+			{
+				$args = array();
+				$args['q'] = $query;
+			}
 
 			// set the output to JSON
 			$args['flags'] = 'J';
@@ -219,8 +226,9 @@ die;
 			$headers = array( $request->to_header() );
 
 			// do the request
+			$formatted_url = sprintf( '%s?%s', $url, OAuthUtil::build_http_query( $args ) );
 			$api_result = wp_remote_get(
-				sprintf( '%s?%s', $url, OAuthUtil::build_http_query( $args ) ),
+				$formatted_url,
 				array(
 					'headers' => array(
 						'Authorization' => str_ireplace( 'Authorization: ', '', $headers[0] )
