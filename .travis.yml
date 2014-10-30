@@ -2,13 +2,12 @@ language: php
 
 php:
     - 5.3
-    - 5.4
 
 env:
     - WP_VERSION=latest WP_MULTISITE=0
     - WP_VERSION=latest WP_MULTISITE=1
-    - WP_VERSION=3.8 WP_MULTISITE=0
-    - WP_VERSION=3.8 WP_MULTISITE=1
+    - WP_VERSION=4.0 WP_MULTISITE=0
+    - WP_VERSION=4.0 WP_MULTISITE=1
 
 # The following git: and befire_install: hackery is used to allow Travis to access the git submodules 
 # without changing the submodule URL in the .gitmodules file
