@@ -28,8 +28,11 @@ class bGeo_Admin
 		//add the geo metabox to each of the taxonomies we're registered against
 		foreach ( $this->bgeo->options()->taxonomies as $taxonomy )
 		{
-			add_action( $taxonomy . '_edit_form_fields', array( $this , 'metabox' ), 5, 2 );
+			add_action( $taxonomy . '_edit_form_fields', array( $this, 'term_metabox' ), 5, 2 );
 		}
+
+		//add the geo metabox to the posts
+		// add_action( 'add_meta_boxes', array( $this, 'post_metaboxes' ), 10, 1 );
 	}
 
 	// register and enqueue any scripts needed for the dashboard
@@ -96,8 +99,8 @@ class bGeo_Admin
 		$this->bgeo->delete_geo( $term_id, $taxonomy, $deleted_term );
 	}
 
-	// the metabox
-	public function metabox( $tag, $taxonomy )
+	// the metabox on terms
+	public function term_metabox( $tag, $taxonomy )
 	{
 		// must have this on the page in one of the metaboxes
 		// the nonce is then checked in $this->save_post()
@@ -125,8 +128,56 @@ class bGeo_Admin
 
 		// when saved, the form elements will be passed to
 		// $this->save_post(), which simply checks permissions and
-		// captures the $_POST var, and then to bgeo()->update_meta(),
-		// where the data is sanitized and validated before saving
+		// captures the $_POST var, and then passes it to 
+		// bgeo()->update_meta(), where the data is sanitized and 
+		// validated before saving
+	}
+
+	// should we add our metabox to this post type?
+	public function post_metaboxes( $post_type )
+	{
+		add_meta_box(
+			$this->get_field_id( 'post_metabox' ),
+			'Locations',
+			array( $this , 'post_metabox' ),
+			$post_type,
+			'normal',
+			'high'
+		);
+	}
+
+	// the metabox on posts
+	public function post_metabox( $post )
+	{
+		// must have this on the page in one of the metaboxes
+		// the nonce is then checked in $this->save_post()
+		$this->nonce_field();
+
+
+		if( empty( $tag ) || empty( $taxonomy ) )
+		{
+			echo 'No tag or taxonomy set.';
+			return;
+		}
+
+		// add the form elements you want to use here.
+		// these are regular html form elements, but use $this->get_field_name( 'name' ) and $this->get_field_id( 'name' ) to identify them
+
+		include_once __DIR__ . '/templates/metabox-details.php';
+
+		// be sure to use proper validation on user input displayed here
+		// http://codex.wordpress.org/Data_Validation
+
+		// use checked() or selected() for checkboxes and select lists
+		// http://codex.wordpress.org/Function_Reference/selected
+		// http://codex.wordpress.org/Function_Reference/checked
+		// there are other convenience methods in WP, as well
+
+		// when saved, the form elements will be passed to
+		// $this->save_post(), which simply checks permissions and
+		// captures the $_POST var, and then passes it to 
+		// bgeo()->update_meta(), where the data is sanitized and 
+		// validated before saving
 	}
 
 	public function upgrade()
