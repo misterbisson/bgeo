@@ -9,4 +9,4 @@ class bGeo_Test extends WP_UnitTestCase
 	{
 		$this->assertTrue( is_object( bgeo() ) );
 	}//end test_singleton
-}
+}//end class

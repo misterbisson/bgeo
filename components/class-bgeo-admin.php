@@ -147,20 +147,16 @@ class bGeo_Admin extends bGeo
 	{
 		global $wpdb;
 
-		$charset_collate = '';
-		if ( version_compare( mysql_get_server_info() , '4.1.0', '>=' ))
+		if ( ! empty( $wpdb->charset ))
 		{
-			if ( ! empty( $wpdb->charset ))
-			{
-				$charset_collate = 'DEFAULT CHARACTER SET '. $wpdb->charset;
-			}
-			if ( ! empty( $wpdb->collate ))
-			{
-				$charset_collate .= ' COLLATE '. $wpdb->collate;
-			}
+			$charset_collate = 'DEFAULT CHARACTER SET '. $wpdb->charset;
+		}
+		if ( ! empty( $wpdb->collate ))
+		{
+			$charset_collate .= ' COLLATE '. $wpdb->collate;
 		}
 
-		require_once ABSPATH . 'wp-admin/upgrade-functions.php';
+		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 
 		dbDelta("
 			CREATE TABLE " . bgeo()->table . " (

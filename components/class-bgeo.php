@@ -136,7 +136,7 @@ class bGeo
 	// get options
 	public function options()
 	{
-		if ( ! $this->options )
+		if ( ! isset( $this->options ) )
 		{
 			$this->options = (object) apply_filters( 
 				'go_config',
