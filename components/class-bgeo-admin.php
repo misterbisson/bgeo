@@ -3,10 +3,14 @@
 This class includes the admin UI components and metaboxes, and the supporting methods they require.
 */
 
-class bGeo_Admin extends bGeo
+class bGeo_Admin
 {
-	public function __construct()
+	private $bgeo = NULL;
+
+	public function __construct( $bgeo )
 	{
+		$this->bgeo = $bgeo;
+
 		add_action( 'admin_init', array( $this , 'admin_init' ) );
 
 		add_action( 'created_term', array( $this , 'edited_term' ), 5, 3 );
@@ -22,7 +26,7 @@ class bGeo_Admin extends bGeo
 		$this->upgrade();
 
 		//add the geo metabox to each of the taxonomies we're registered against
-		foreach ( bgeo()->options()->taxonomies as $taxonomy )
+		foreach ( $this->bgeo->options()->taxonomies as $taxonomy )
 		{
 			add_action( $taxonomy . '_edit_form_fields', array( $this , 'metabox' ), 5, 2 );
 		}
@@ -31,32 +35,32 @@ class bGeo_Admin extends bGeo
 	// register and enqueue any scripts needed for the dashboard
 	public function admin_enqueue_scripts()
 	{
-		wp_register_style( $this->id_base . '-admin' , bgeo()->plugin_url . '/css/' . $this->id_base . '-admin.css' , array( $this->id_base . '-leaflet' ) , $this->version );
-		wp_enqueue_style( $this->id_base . '-admin' );
+		wp_register_style( $this->bgeo->id_base . '-admin' , $this->bgeo->plugin_url . '/css/' . $this->bgeo->id_base . '-admin.css' , array( $this->bgeo->id_base . '-leaflet' ) , $this->version );
+		wp_enqueue_style( $this->bgeo->id_base . '-admin' );
 
-		wp_register_script( $this->id_base . '-admin', bgeo()->plugin_url . '/js/' . $this->id_base . '-admin.js', array( $this->id_base . '-leaflet' ), $this->version, TRUE );
-		wp_enqueue_script( $this->id_base . '-admin');
+		wp_register_script( $this->bgeo->id_base . '-admin', $this->bgeo->plugin_url . '/js/' . $this->bgeo->id_base . '-admin.js', array( $this->bgeo->id_base . '-leaflet' ), $this->version, TRUE );
+		wp_enqueue_script( $this->bgeo->id_base . '-admin');
 
 	}//end admin_enqueue_scripts
 
 	public function nonce_field()
 	{
-		wp_nonce_field( plugin_basename( __FILE__ ) , $this->id_base .'-nonce' );
+		wp_nonce_field( plugin_basename( __FILE__ ) , $this->bgeo->id_base .'-nonce' );
 	}
 
 	public function verify_nonce()
 	{
-		return wp_verify_nonce( $_POST[ $this->id_base .'-nonce' ] , plugin_basename( __FILE__ ));
+		return wp_verify_nonce( $_POST[ $this->bgeo->id_base .'-nonce' ] , plugin_basename( __FILE__ ));
 	}
 
 	public function get_field_name( $field_name )
 	{
-		return $this->id_base . '[' . $field_name . ']';
+		return $this->bgeo->id_base . '[' . $field_name . ']';
 	}
 
 	public function get_field_id( $field_name )
 	{
-		return $this->id_base . '-' . $field_name;
+		return $this->bgeo->id_base . '-' . $field_name;
 	}
 
 	public function edited_term( $term_id, $tt_id, $taxonomy )
@@ -76,7 +80,7 @@ class bGeo_Admin extends bGeo
 		}
 
 		// save it
-		$this->update_geo( $term_id, $taxonomy, stripslashes_deep( $_POST[ $this->id_base ] ) );
+		$this->bgeo->update_geo( $term_id, $taxonomy, stripslashes_deep( $_POST[ $this->bgeo->id_base ] ) );
 	}
 
 	public function delete_term( $term, $tt_id, $taxonomy, $deleted_term )
@@ -89,7 +93,7 @@ class bGeo_Admin extends bGeo
 		}
 
 		// delete it
-		$this->delete_geo( $term_id, $taxonomy, $deleted_term );
+		$this->bgeo->delete_geo( $term_id, $taxonomy, $deleted_term );
 	}
 
 	// the metabox
@@ -127,7 +131,7 @@ class bGeo_Admin extends bGeo
 
 	public function upgrade()
 	{
-		$options = get_option( $this->id_base );
+		$options = get_option( $this->bgeo->id_base );
 
 		// initial activation and default options
 		if( ! isset( $options['version'] ) )
@@ -136,11 +140,11 @@ class bGeo_Admin extends bGeo
 			$this->create_table();
 
 			// set the options
-			$options['version'] = $this->version;
+			$options['version'] = $this->bgeo->version;
 		}
 
 		// replace the old options with the new ones
-		update_option( $this->id_base , $options );
+		update_option( $this->bgeo->id_base , $options );
 	}
 
 	function create_table()
@@ -158,8 +162,8 @@ class bGeo_Admin extends bGeo
 
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 
-		dbDelta("
-			CREATE TABLE " . bgeo()->table . " (
+		return dbDelta("
+			CREATE TABLE " . $this->bgeo->table . " (
 				`term_taxonomy_id` bigint(20) unsigned NOT NULL,
 				`point` point NOT NULL DEFAULT '',
 				`bounds` geometrycollection NOT NULL DEFAULT '',

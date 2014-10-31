@@ -85,7 +85,7 @@ class bGeo
 		if ( ! $this->admin )
 		{
 			require_once __DIR__ . '/class-bgeo-admin.php';
-			$this->admin = new bGeo_Admin();
+			$this->admin = new bGeo_Admin( $this );
 		}
 
 		return $this->admin;
