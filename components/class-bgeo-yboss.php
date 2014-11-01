@@ -293,7 +293,7 @@ die;
 
 	public function yql( $query )
 	{
-		// we're using the placefinder api here
+		// we're using the yql api here
 		$api = 'v1/public/yql';
 
 		if ( ! $api_result = wp_cache_get( $this->cache_key( $api, $query ), $this->id_base ) )
@@ -345,6 +345,7 @@ die;
 
 		$query = 'SELECT * FROM geo.placetypes(0)';
 		$query = 'SELECT * FROM geo.places.belongtos WHERE member_woeid ="23424756"';
+		$query = 'SELECT * FROM geo.placemaker WHERE documentContent = "They followed him to deepest Africa and found him there, in Timbuktu" AND documentType="text/plain"';
 
 		echo '<pre>';
 
