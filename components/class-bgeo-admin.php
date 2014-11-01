@@ -7,15 +7,38 @@ class bGeo_Admin
 {
 	private $bgeo = NULL;
 
+	private $dependencies = array(
+		'go-ui' => 'https://github.com/GigaOM/go-ui',
+	);
+	private $missing_dependencies = array();
+
+	/**
+	 * constructor
+	 */
 	public function __construct( $bgeo )
 	{
 		$this->bgeo = $bgeo;
+		add_action( 'init', array( $this, 'init' ) );
+	}//end __construct
 
+	/**
+	 * Start things up!
+	 */
+	public function init()
+	{
 		add_action( 'admin_init', array( $this , 'admin_init' ) );
 
+		// for managing terms
 		add_action( 'created_term', array( $this , 'edited_term' ), 5, 3 );
 		add_action( 'edited_term', array( $this , 'edited_term' ), 5, 3 );
 		add_action( 'delete_term', array( $this , 'delete_term' ), 5, 4 );
+
+		// for managing posts
+		add_action( 'save_post', array( $this, 'save_post' ), 10, 2 );
+
+		// common to both terms and posts
+		add_action( 'admin_enqueue_scripts', array( $this, 'admin_enqueue_scripts' ) );
+		add_action( 'admin_footer-post.php', array( $this, 'action_admin_footer_post' ) );
 	}
 
 	public function admin_init()
@@ -35,16 +58,121 @@ class bGeo_Admin
 		// add_action( 'add_meta_boxes', array( $this, 'post_metaboxes' ), 10, 1 );
 	}
 
-	// register and enqueue any scripts needed for the dashboard
-	public function admin_enqueue_scripts()
+	/**
+	 * Setup scripts and check dependencies for the admin interface
+	 */
+	public function admin_enqueue_scripts( $hook_suffix )
 	{
-		wp_register_style( $this->bgeo->id_base . '-admin' , $this->bgeo->plugin_url . '/css/' . $this->bgeo->id_base . '-admin.css' , array( $this->bgeo->id_base . '-leaflet' ) , $this->version );
-		wp_enqueue_style( $this->bgeo->id_base . '-admin' );
+		$this->check_dependencies();
 
-		wp_register_script( $this->bgeo->id_base . '-admin', $this->bgeo->plugin_url . '/js/' . $this->bgeo->id_base . '-admin.js', array( $this->bgeo->id_base . '-leaflet' ), $this->version, TRUE );
-		wp_enqueue_script( $this->bgeo->id_base . '-admin');
+		if ( $this->missing_dependencies )
+		{
+			return;
+		}//end if
 
+		// make sure go-ui has been instantiated and its resources registered
+		go_ui();
+		$script_config = apply_filters( 'go-config', array( 'version' => $this->bgeo->version ), 'go-script-version' );
+
+		switch ( $hook_suffix )
+		{
+			case 'edit-tags.php':
+				wp_enqueue_script(
+					'bgeo-admin-tags',
+					$this->bgeo->plugin_url . '/js/bgeo-admin-tags.js',
+					array( 'bgeo-leaflet' ),
+					$this->version,
+					TRUE
+				);
+
+				wp_enqueue_style(
+					'bgeo-admin-tags',
+					$this->bgeo->plugin_url . '/css/bgeo-admin-tags.css',
+					array( 'bgeo-leaflet' ),
+					$this->version
+				);
+				break;
+
+			case 'post.php':
+/*
+				wp_enqueue_script(
+					'bgeo-admin-posts',
+					$this->bgeo->plugin_url . '/js/bgeo-admin-posts.js',
+					array( 'jquery', 'handlebars' ),
+					$script_config['version'],
+					TRUE
+				);
+
+				wp_enqueue_style(
+					'bgeo-admin-posts',
+					$this->bgeo->plugin_url . '/css/bgeo-admin-posts.css',
+					array( 'fontawesome' ),
+					$script_config['version']
+				);
+
+				$post = get_post();
+				$meta = $this->get_post_meta( $post->ID );
+
+				$localized_values = array(
+					'post_id'          => $post->ID,
+					'nonce'            => wp_create_nonce( 'bgeo' ),
+					'ignored_by_tax'   => isset( $meta['ignored-tags'] ) ? $meta['ignored-tags'] : array(),
+					'suggested_terms'  => array(),
+				);
+
+				wp_localize_script( 'bgeo-admin-posts', 'bgeo', $localized_values );
+*/
+				break;
+
+			default:
+				return;
+		}
 	}//end admin_enqueue_scripts
+
+	/**
+	 * check plugin dependencies
+	 */
+	public function check_dependencies()
+	{
+		foreach ( $this->dependencies as $dependency => $url )
+		{
+			if ( function_exists( str_replace( '-', '_', $dependency ) ) )
+			{
+				continue;
+			}//end if
+
+			$this->missing_dependencies[ $dependency ] = $url;
+		}//end foreach
+
+		if ( $this->missing_dependencies )
+		{
+			add_action( 'admin_notices', array( $this, 'admin_notices' ) );
+		}//end if
+	}//end check_dependencies
+
+	/**
+	 * hooked to the admin_notices action to inject a message if depenencies are not activated
+	 */
+	public function admin_notices()
+	{
+		?>
+		<div class="error">
+			<p>
+				You must <a href="<?php echo esc_url( admin_url( 'plugins.php' ) ); ?>">activate</a> the following plugins before using bGeo:
+			</p>
+			<ul>
+				<?php
+				foreach ( $this->missing_dependencies as $dependency => $url )
+				{
+					?>
+					<li><a href="<?php echo esc_url( $url ); ?>"><?php echo esc_html( $dependency ); ?></a></li>
+					<?php
+				}//end foreach
+				?>
+			</ul>
+		</div>
+		<?php
+	}//end admin_notices
 
 	public function nonce_field()
 	{
@@ -128,8 +256,8 @@ class bGeo_Admin
 
 		// when saved, the form elements will be passed to
 		// $this->save_post(), which simply checks permissions and
-		// captures the $_POST var, and then passes it to 
-		// bgeo()->update_meta(), where the data is sanitized and 
+		// captures the $_POST var, and then passes it to
+		// bgeo()->update_meta(), where the data is sanitized and
 		// validated before saving
 	}
 
@@ -175,10 +303,20 @@ class bGeo_Admin
 
 		// when saved, the form elements will be passed to
 		// $this->save_post(), which simply checks permissions and
-		// captures the $_POST var, and then passes it to 
-		// bgeo()->update_meta(), where the data is sanitized and 
+		// captures the $_POST var, and then passes it to
+		// bgeo()->update_meta(), where the data is sanitized and
 		// validated before saving
 	}
+
+	public function get_post_meta( $post_id )
+	{
+		if ( ! $meta = get_post_meta( $post_id, $this->bgeo->id_base, TRUE ) )
+		{
+			return array();
+		} // END if
+
+		return $meta;
+	} // END get_post_meta
 
 	public function upgrade()
 	{

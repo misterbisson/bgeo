@@ -1,0 +1,59 @@
+/* @override 
+	http://go.local.gostage.it/wp-content/themes/vip/gigaom5-plugins/bgeo/components/css/bgeo.css?ver=1 */
+
+.bgeo {
+	background-color: #f5f5f5;
+	margin: 0 -12px -12px;
+	padding: 12px 12px 1px;
+	border-top: 1px solid #dddddd;
+}
+
+.bgeo-taggroup {
+	margin-bottom: 12px;
+	display: inline-block;
+}
+
+.bgeo-refresh {
+	float: right;
+}
+
+.bgeo-taglist {
+	margin-bottom: 12px;
+	clear: both;
+}
+
+.bgeo-taglist:after {
+	content: "";
+	display: table;
+	clear: both;
+}
+
+.bgeo-taglist span {
+	margin-right: 15px;
+	line-height: 1.9em;
+	float: left;
+}
+
+.bgeo-ignore {
+	cursor: pointer;
+	position: absolute;
+	font-size: 16px;
+	color: #bbbbbb;
+}
+
+.bgeo-ignore:hover {
+	color: #ca0813;
+}
+
+.bgeo-use {
+	cursor: pointer;
+	margin-left: 15px;
+}
+
+.bgeo-ignored-list .bgeo-use {
+	margin-left: 0;
+}
+
+.bgeo-ignored-list > span > .bgeo-ignore {
+	display: none;
+}
