@@ -17,7 +17,7 @@ if( ! is_object( $geo ))
 	);
 }
 
-wp_localize_script( 'bgeo-admin-tags', 'bgeo_term', (array) $geo );
+wp_localize_script( 'bgeo-admin-terms', 'bgeo_term', (array) $geo );
 
 ?>
 <tr class="form-field">

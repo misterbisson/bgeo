@@ -78,16 +78,16 @@ class bGeo_Admin
 		{
 			case 'edit-tags.php':
 				wp_enqueue_script(
-					'bgeo-admin-tags',
-					$this->bgeo->plugin_url . '/js/bgeo-admin-tags.js',
+					'bgeo-admin-terms',
+					$this->bgeo->plugin_url . '/js/bgeo-admin-terms.js',
 					array( 'bgeo-leaflet' ),
 					$this->version,
 					TRUE
 				);
 
 				wp_enqueue_style(
-					'bgeo-admin-tags',
-					$this->bgeo->plugin_url . '/css/bgeo-admin-tags.css',
+					'bgeo-admin-terms',
+					$this->bgeo->plugin_url . '/css/bgeo-admin-terms.css',
 					array( 'bgeo-leaflet' ),
 					$this->version
 				);
@@ -120,7 +120,7 @@ class bGeo_Admin
 					'suggested_terms'  => array(),
 				);
 
-				wp_localize_script( 'bgeo-admin-posts', 'bgeo', $localized_values );
+				wp_localize_script( 'bgeo-admin-posts', 'bgeo_post', $localized_values );
 */
 				break;
 
