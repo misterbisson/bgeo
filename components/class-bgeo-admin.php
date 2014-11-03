@@ -84,6 +84,7 @@ class bGeo_Admin
 					$this->version,
 					TRUE
 				);
+				// script data is localized in the metabox template
 
 				wp_enqueue_style(
 					'bgeo-admin-terms',
@@ -120,7 +121,8 @@ class bGeo_Admin
 					'suggested_terms'  => array(),
 				);
 
-				wp_localize_script( 'bgeo-admin-posts', 'bgeo_post', $localized_values );
+				wp_localize_script( 'bgeo-admin-posts', 'bgeo', $localized_values );
+				add_action( 'admin_footer-post.php', array( $this, 'action_admin_footer_post' ) );
 */
 				break;
 
@@ -260,6 +262,43 @@ class bGeo_Admin
 		// bgeo()->update_meta(), where the data is sanitized and
 		// validated before saving
 	}
+
+	/**
+	 * Set handlebars.js templates
+	 */
+	public function action_admin_footer_post()
+	{
+		global $action;
+
+		if ( 'edit' !== $action )
+		{
+			return;
+		}//end if
+		?>
+		<script id="bgeo-handlebars-tags" type="text/x-handlebars-template">
+			<div class="bgeo">
+				<div>
+					<a href="#" class="bgeo-taggroup bgeo-suggested">Suggested tags</a>
+					<a href="#" class="bgeo-refresh">Refresh</a>
+					<div class="bgeo-taglist bgeo-suggested-list">Refreshing...</div>
+				</div>
+				<div>
+					<a href="#" class="bgeo-taggroup bgeo-ignored" style="display: none;">Ignored tags</a>
+					<div style="display: none;" class="bgeo-taglist bgeo-ignored-list"></div>
+				</div>
+			</div>
+		</script>
+		<script id="bgeo-handlebars-nonce" type="text/x-handlebars-template">
+			<input type="hidden" id="bgeo-nonce" name="bgeo-nonce" value="{{nonce}}" />
+		</script>
+		<script id="bgeo-handlebars-ignore" type="text/x-handlebars-template">
+			<textarea name="tax_ignore[{{taxonomy}}]" class="the-ignored-tags" id="tax-ignore-{{taxonomy}}">{{ignored_taxonomies}}</textarea>
+		</script>
+		<script id="bgeo-handlebars-tag" type="text/x-handlebars-template">
+			<span><a class="bgeo-ignore" title="Ignore tag"><i class="fa fa-times-circle"></i></a>&nbsp;<a class="bgeo-use">{{name}}</a></span>
+		</script>
+		<?php
+	}//end action_admin_footer_post
 
 	// should we add our metabox to this post type?
 	public function post_metaboxes( $post_type )
