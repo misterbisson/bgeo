@@ -35,6 +35,7 @@ class bGeo_Admin
 
 		// for managing posts
 		add_action( 'save_post', array( $this, 'save_post' ), 10, 2 );
+		add_action( 'wp_ajax_bgeo_locationsfromtext', array( $this, 'ajax_locationsfromtext' ) );
 
 		// common to both terms and posts
 		add_action( 'admin_enqueue_scripts', array( $this, 'admin_enqueue_scripts' ) );
@@ -356,6 +357,140 @@ class bGeo_Admin
 
 		return $meta;
 	} // END get_post_meta
+
+	/**
+	 * post_id is required
+	 * text is optional
+	 */
+	public function ajax_locationsfromtext()
+	{
+		// Check nonce
+		if ( ! isset( $_REQUEST['nonce'] ) || ! wp_verify_nonce( $_REQUEST['nonce'], 'bgeo' ) )
+		{
+			wp_send_json_error( array( 'message' => 'You do not have permission to be here.' ) );
+		}// end if
+
+		// content may be passed in via POST
+		$text = NULL;
+		$post_id = NULL;
+
+		if ( isset( $_REQUEST['text'] ) )
+		{
+			$text = wp_kses_data( $_REQUEST['text'] );
+		}//end if
+
+		if ( isset( $_REQUEST['post_id'] ) )
+		{
+			$post_id = absint( $_REQUEST['post_id'] );
+		}//end if
+
+		if ( NULL === $post_id )
+		{
+			wp_send_json_error( array( 'message' => 'No post_id provided.' ) );
+		}//end if
+
+		if ( ! ( $post = get_post( $post_id ) ) )
+		{
+			wp_send_json_error( array( 'message' => 'This is not a valid post.' ) );
+		}//end if
+
+		if ( ! current_user_can( 'edit_post', $post_id ) )
+		{
+			wp_send_json_error( array( 'message' => 'You do not have permission to edit this post.' ) );
+		}//end if
+
+/*
+this needs to be passed to the next method from $text
+
+		// Override post content for this request if needed
+		if ( $content )
+		{
+			$post->post_content = $content;
+		}//end if
+*/
+
+		/*
+		get the api result
+		$result = api result;
+		*/
+
+		if ( is_wp_error( $result ) )
+		{
+			wp_send_json_error( array( 'message' => $result->get_error_message() ) );
+		}//end if
+
+		/*
+		save the suggestions back to the post
+		$result = save;
+		*/
+
+		if ( is_wp_error( $result ) )
+		{
+			wp_send_json_error( array( 'message' => $result->get_error_message() ) );
+		}//end if
+
+		// Send the response back
+		wp_send_json( $enrich->response );
+	}//end ajax_locationsfromcontent
+
+	/**
+	 * post_id is required
+	 * text is optional and can be inferred from the text of the post
+	 */
+	public function locationsfromtext( $post_id, $text = NULL )
+	{
+		if ( ! ( $post = get_post( $post_id ) ) )
+		{
+			return FALSE;
+		}//end if
+
+		// Get the text for this request if none was provided
+		if ( ! $text )
+		{
+			// get the public taxonomies associated with this post type
+			$taxonomies = get_taxonomies(
+				array(
+					'object_type' => $post->post_type,
+					'public' => TRUE,
+				),
+				'names',
+				'and'
+			);
+
+			// get the terms for this post from all public taxonomies
+			$terms = wp_get_object_terms(
+				$post->ID,
+				$taxonomies,
+				array(
+					'fields' => 'names',
+				)
+			);
+
+			// sanity check our terms result, prevents WP_Errors from slipping through
+			if ( ! is_array( $terms ) )
+			{
+				$terms = array();
+			}
+
+			// assemble everything and apply filters so other plugins can get involved
+			$text = apply_filters(
+				'bgeo_text',
+				$post->post_title . "\n\n" . $post->post_excerpt . "\n\n" . $post->post_content . "\n\n" . implode( "\n", $terms ),
+				$post
+			);
+
+			// check the API
+			$locations = NULL;
+/*
+			$meta = go_opencalais()->get_post_meta( $this->post->ID );
+			$meta['enrich']            = json_encode( $this->response );
+			$meta['enrich_unfiltered'] = json_encode( $this->response_raw );
+			update_post_meta( $this->post->ID, go_opencalais()->post_meta_key, $meta );
+*/
+
+
+		}//end if
+	}
 
 	public function upgrade()
 	{

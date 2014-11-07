@@ -6,7 +6,7 @@
 
 $geo = bgeo()->get_geo( $tag->term_id, $tag->taxonomy );
 
-// create a default geo obgect if the above failed
+// create a default geo object if the above failed
 if( ! is_object( $geo ))
 {
 	$geo = (object) array(
