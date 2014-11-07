@@ -311,7 +311,7 @@ this needs to be passed to the next method from $text
 			$meta = $this->get_post_meta( $this->post->ID );
 			$meta['enrich']            = json_encode( $this->response );
 			$meta['enrich_unfiltered'] = json_encode( $this->response_raw );
-			update_post_meta( $this->post->ID, go_opencalais()->post_meta_key, $meta );
+			update_post_meta( $this->post->ID, $this->bgeo->post_meta_key, $meta );
 */
 		}//end if
 	}

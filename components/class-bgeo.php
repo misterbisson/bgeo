@@ -70,13 +70,6 @@ class bGeo
 		{
 			$this->register_taxonomy();
 		}
-
-		if ( is_admin() )
-		{
-			// attempt to load the go-opencalais integration
-			// there's a conditional in the following method that checks if the other plugin exists
-			$this->go_opencalais();
-		}
 	}
 
 	// a singleton for the admin object
@@ -114,24 +107,6 @@ class bGeo
 
 		return $this->yboss;
 	} // END yboss
-
-	// a singleton for the go_opencalais integration object
-	public function go_opencalais()
-	{
-		// sanity check to make sure the go-opencalais plugin is loaded
-		if ( ! function_exists( 'go_opencalais' ) )
-		{
-			return FALSE;
-		}
-
-		if ( ! $this->go_opencalais )
-		{
-			require_once __DIR__ . '/class-bgeo-go-opencalais.php';
-			$this->go_opencalais = new bGeo_GO_OpenCalais();
-		}
-
-		return $this->go_opencalais;
-	} // END go_opencalais
 
 	// get options
 	public function options()
