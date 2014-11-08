@@ -28,8 +28,8 @@ class bGeo_Admin_Posts
 	{
 		add_action( 'admin_init', array( $this , 'admin_init' ) );
 
-		add_action( 'save_post', array( $this, 'save_post' ), 10, 2 );
-		add_action( 'wp_ajax_bgeo_locationsfromtext', array( $this, 'ajax_locationsfromtext' ) );
+//		add_action( 'save_post', array( $this, 'save_post' ), 10, 2 );
+		add_action( 'wp_ajax_bgeo-locationsfromtext', array( $this, 'ajax_locationsfromtext' ) );
 	}
 
 	public function admin_init()
@@ -190,19 +190,22 @@ class bGeo_Admin_Posts
 	 */
 	public function ajax_locationsfromtext()
 	{
+/*
 		// Check nonce
 		if ( ! isset( $_REQUEST['nonce'] ) || ! wp_verify_nonce( $_REQUEST['nonce'], 'bgeo' ) )
 		{
 			wp_send_json_error( array( 'message' => 'You do not have permission to be here.' ) );
 		}// end if
-
-		// content may be passed in via POST
+*/
+		// text may be passed in via POST
+		// is taken from post content otherwise
 		$text = NULL;
 		$post_id = NULL;
 
 		if ( isset( $_REQUEST['text'] ) )
 		{
-			$text = wp_kses_data( $_REQUEST['text'] );
+			// sanitization here is sort of redundent, but better to be sure here
+			$text = wp_kses( $_REQUEST['text'], array() );
 		}//end if
 
 		if ( isset( $_REQUEST['post_id'] ) )
@@ -210,7 +213,7 @@ class bGeo_Admin_Posts
 			$post_id = absint( $_REQUEST['post_id'] );
 		}//end if
 
-		if ( NULL === $post_id )
+		if ( ! $post_id )
 		{
 			wp_send_json_error( array( 'message' => 'No post_id provided.' ) );
 		}//end if
@@ -225,38 +228,14 @@ class bGeo_Admin_Posts
 			wp_send_json_error( array( 'message' => 'You do not have permission to edit this post.' ) );
 		}//end if
 
-/*
-this needs to be passed to the next method from $text
+		$locations = $this->locationsfromtext( $post_id, $text );
 
-		// Override post content for this request if needed
-		if ( $content )
+		if ( FALSE === $locations )
 		{
-			$post->post_content = $content;
-		}//end if
-*/
-
-		/*
-		get the api result
-		$result = api result;
-		*/
-
-		if ( is_wp_error( $result ) )
-		{
-			wp_send_json_error( array( 'message' => $result->get_error_message() ) );
+			wp_send_json_error( array( 'message' => 'There was an API error.' ) );
 		}//end if
 
-		/*
-		save the suggestions back to the post
-		$result = save;
-		*/
-
-		if ( is_wp_error( $result ) )
-		{
-			wp_send_json_error( array( 'message' => $result->get_error_message() ) );
-		}//end if
-
-		// Send the response back
-		wp_send_json( $enrich->response );
+		wp_send_json( $locations );
 	}//end ajax_locationsfromcontent
 
 	/**
@@ -299,21 +278,58 @@ this needs to be passed to the next method from $text
 			}
 
 			// assemble everything and apply filters so other plugins can get involved
+			// note that HTML is stripped before sending the text to the API
 			$text = apply_filters(
 				'bgeo_text',
 				$post->post_title . "\n\n" . $post->post_excerpt . "\n\n" . $post->post_content . "\n\n" . implode( "\n", $terms ),
 				$post
 			);
-
-			// check the API
-			$locations = NULL;
-/*
-			$meta = $this->get_post_meta( $this->post->ID );
-			$meta['enrich']            = json_encode( $this->response );
-			$meta['enrich_unfiltered'] = json_encode( $this->response_raw );
-			update_post_meta( $this->post->ID, $this->bgeo->post_meta_key, $meta );
-*/
 		}//end if
+
+		// check the API
+		// API results are cached in the underlying method
+		$query = 'SELECT * FROM geo.placemaker WHERE documentContent = "' . esc_attr( wp_kses( $text, array() ) ) . '" AND documentType="text/plain"';
+		$raw_entities = bgeo()->yahoo()->yql( $query );
+
+		if ( ! isset( $raw_entities->matches->match[0] ) )
+		{
+			return FALSE;
+		}
+
+		$locations = array();
+
+echo '<pre>';
+
+		// extract the woeids from the results
+		$woeids = array_map( 'absint', 
+			wp_list_pluck(
+				wp_list_pluck(
+					$raw_entities->matches->match,
+					'place'
+				),
+				'woeId'
+			)
+		);
+
+		$query = 'SELECT * FROM geo.places WHERE woeid IN (SELECT woeid FROM geo.places WHERE woeid IN ('. implode(', ', $woeids ) .') )';
+		$raw_locations = bgeo()->yahoo()->yql( $query );
+
+print_r( $raw_locations );
+
+/*
+		$query = 'SELECT * FROM geo.places.belongtos WHERE member_woeid IN (SELECT woeid FROM geo.places WHERE woeid IN ('. implode(', ', $woeids ) .') )';
+		$raw_belongtos = bgeo()->yahoo()->yql( $query );
+
+print_r( $raw_belongtos );
+*/
+/*
+		$meta = $this->get_post_meta( $this->post->ID );
+		$meta['locations']            = json_encode( $locations );
+		$meta['raw'] = $raw_entities;
+		$this->update_post_meta( $this->post->ID, $meta );
+*/
+
+		return $raw_locations;
 	}
 
 }//end bGeo_Admin_Posts class

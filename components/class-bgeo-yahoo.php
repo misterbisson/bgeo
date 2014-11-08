@@ -1,6 +1,6 @@
 <?php
 /*
-This class includes the admin UI components and metaboxes, and the supporting methods they require.
+This class includes the yahoo API getters.
 */
 
 class bGeo_Yahoo
