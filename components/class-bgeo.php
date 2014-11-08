@@ -70,6 +70,8 @@ class bGeo
 		{
 			$this->register_taxonomy();
 		}
+
+		add_action( 'delete_term', array( $this , 'delete_term' ), 5, 4 );
 	}
 
 	// a singleton for the admin object
@@ -371,6 +373,12 @@ print_r( $wpdb );
 		// execute the query
 		return $wpdb->query( $sql );
 	}//end delete_geo
+
+	public function delete_term( $term_id, $tt_id, $taxonomy, $deleted_term )
+	{
+		// delete it
+		$this->bgeo->delete_geo( $term_id, $taxonomy, $deleted_term );
+	}
 
 	public function register_taxonomy()
 	{

@@ -30,7 +30,8 @@ class bGeo_Admin_Terms
 
 		add_action( 'created_term', array( $this , 'edited_term' ), 5, 3 );
 		add_action( 'edited_term', array( $this , 'edited_term' ), 5, 3 );
-		add_action( 'delete_term', array( $this , 'delete_term' ), 5, 4 );
+		// the above are only relevant to interactive term creation and updates
+		// term deletion (which can happen without human interaction) is handled in the main bGeo class
 	}
 
 	public function admin_init()
@@ -93,19 +94,6 @@ class bGeo_Admin_Terms
 
 		// save it
 		$this->bgeo->update_geo( $term_id, $taxonomy, stripslashes_deep( $_POST[ $this->bgeo->id_base ] ) );
-	}
-
-	public function delete_term( $term, $tt_id, $taxonomy, $deleted_term )
-	{
-		// check the permissions
-		$tax = get_taxonomy( $taxonomy );
-		if( ! current_user_can( $tax->cap->edit_terms ) )
-		{
-			return;
-		}
-
-		// delete it
-		$this->bgeo->delete_geo( $term_id, $taxonomy, $deleted_term );
 	}
 
 	// the metabox on terms
