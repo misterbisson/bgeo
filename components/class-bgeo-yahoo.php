@@ -3,12 +3,12 @@
 This class includes the admin UI components and metaboxes, and the supporting methods they require.
 */
 
-class bGeo_Yboss extends bGeo
+class bGeo_Yahoo
 {
 	public $cache_ttl_fail = 1013; // prime numbers make good TTLs
 	public $cache_ttl_success = 0; // indefinitely
 	public $errors = array();
-	public $id_base = 'bgeo-yboss';
+	public $id_base = 'bgeo-yahoo';
 	public $woetype = array( // from http://developer.yahoo.com/geo/geoplanet/guide/concepts.html#placetypes
 		'7'  => 'town',
 		'8'  => 'state-province',
@@ -53,10 +53,10 @@ class bGeo_Yboss extends bGeo
 	{
 		if ( is_admin() )
 		{
-			add_action( 'wp_ajax_bgeo-yboss-boss', array( $this, 'boss_ajax' ) );
-			add_action( 'wp_ajax_bgeo-yboss-placefinder', array( $this, 'placefinder_ajax' ) );
-			add_action( 'wp_ajax_bgeo-yboss-placespotter', array( $this, 'placespotter_ajax' ) );
-			add_action( 'wp_ajax_bgeo-yboss-yql', array( $this, 'yql_ajax' ) );
+			add_action( 'wp_ajax_bgeo-yahoo-boss', array( $this, 'boss_ajax' ) );
+			add_action( 'wp_ajax_bgeo-yahoo-placefinder', array( $this, 'placefinder_ajax' ) );
+			add_action( 'wp_ajax_bgeo-yahoo-placespotter', array( $this, 'placespotter_ajax' ) );
+			add_action( 'wp_ajax_bgeo-yahoo-yql', array( $this, 'yql_ajax' ) );
 		}
 	}
 
@@ -355,4 +355,4 @@ die;
 		die;
 	}
 
-}//end bGeo_Yboss class
+}//end bGeo_Yahoo class

@@ -18,7 +18,7 @@ class bGeo
 
 	public $admin = FALSE; // the admin object
 	public $tools = FALSE; // the tools object
-	public $yboss = FALSE; // the yboss object
+	public $yahoo = FALSE; // the yahoo object
 
 	public $options_default = array(
 		'taxonomies' => array(
@@ -53,7 +53,7 @@ class bGeo
 		if ( is_admin() )
 		{
 			$this->admin();
-			$this->yboss();
+			$this->yahoo();
 		}
 
 	} // END __construct
@@ -96,17 +96,17 @@ class bGeo
 		return $this->tools;
 	} // END tools
 
-	// a singleton for the yboss object
-	public function yboss()
+	// a singleton for the yahoo object
+	public function yahoo()
 	{
-		if ( ! $this->yboss )
+		if ( ! $this->yahoo )
 		{
-			require_once __DIR__ . '/class-bgeo-yboss.php';
-			$this->yboss = new bGeo_Yboss();
+			require_once __DIR__ . '/class-bgeo-yahoo.php';
+			$this->yahoo = new bGeo_Yahoo();
 		}
 
-		return $this->yboss;
-	} // END yboss
+		return $this->yahoo;
+	} // END yahoo
 
 	// get options
 	public function options()
