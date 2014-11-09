@@ -38,7 +38,7 @@ class bGeo_Admin_Posts
 		add_action( 'admin_enqueue_scripts', array( $this , 'admin_enqueue_scripts' ) );
 
 		//add the geo metabox to the posts
-		add_action( 'add_meta_boxes', array( $this, 'post_metaboxes' ), 10, 1 );
+		add_action( 'add_meta_boxes', array( $this, 'metaboxes' ), 10, 1 );
 	}
 
 	/**
@@ -56,6 +56,14 @@ class bGeo_Admin_Posts
 					array( 'jquery', 'handlebars' ),
 					$this->bgeo->admin()->script_config()->version,
 					TRUE
+				);
+
+				wp_enqueue_script(
+					'bgeo-angular',
+					'https://ajax.googleapis.com/ajax/libs/angularjs/1.3.2/angular.min.js',
+					array( ),
+					$this->bgeo->admin()->script_config()->version,
+					FALSE
 				);
 
 				wp_enqueue_style(
@@ -106,17 +114,10 @@ class bGeo_Admin_Posts
 					<a href="#" class="bgeo-refresh">Refresh</a>
 					<div class="bgeo-taglist bgeo-suggested-list">Refreshing...</div>
 				</div>
-				<div>
-					<a href="#" class="bgeo-taggroup bgeo-ignored" style="display: none;">Ignored tags</a>
-					<div style="display: none;" class="bgeo-taglist bgeo-ignored-list"></div>
-				</div>
 			</div>
 		</script>
 		<script id="bgeo-handlebars-nonce" type="text/x-handlebars-template">
 			<input type="hidden" id="bgeo-nonce" name="bgeo-nonce" value="{{nonce}}" />
-		</script>
-		<script id="bgeo-handlebars-ignore" type="text/x-handlebars-template">
-			<textarea name="tax_ignore[{{taxonomy}}]" class="the-ignored-tags" id="tax-ignore-{{taxonomy}}">{{ignored_taxonomies}}</textarea>
 		</script>
 		<script id="bgeo-handlebars-tag" type="text/x-handlebars-template">
 			<span><a class="bgeo-ignore" title="Ignore tag"><i class="fa fa-times-circle"></i></a>&nbsp;<a class="bgeo-use">{{name}}</a></span>
@@ -125,7 +126,7 @@ class bGeo_Admin_Posts
 	}//end action_admin_footer_post
 
 	// should we add our metabox to this post type?
-	public function post_metaboxes( $post_type )
+	public function metaboxes( $post_type )
 	{
 		// is this in our post type whitelist?
 		if ( ! in_array( $post_type, $this->bgeo->post_types ) )
@@ -136,7 +137,7 @@ class bGeo_Admin_Posts
 		add_meta_box(
 			$this->bgeo->admin()->get_field_id( 'post-metabox' ),
 			'Locations',
-			array( $this , 'post_metabox' ),
+			array( $this , 'metabox' ),
 			$post_type,
 			'normal',
 			'high'
@@ -144,7 +145,7 @@ class bGeo_Admin_Posts
 	}
 
 	// the metabox on posts
-	public function post_metabox( $post )
+	public function metabox( $post )
 	{
 		// must have this on the page in one of the metaboxes
 		// the nonce is then checked in $this->save_post()

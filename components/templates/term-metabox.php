@@ -1,7 +1,6 @@
 <?php
 /**
- * html for the Details metabox.
- * The context is the bDefinite_Admin class, where $post is set.
+ * html for the geographic details metabox when editing terms.
  */
 
 $geo = bgeo()->get_geo( $tag->term_id, $tag->taxonomy );

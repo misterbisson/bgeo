@@ -42,7 +42,7 @@ class bGeo_Admin_Terms
 		//add the geo metabox to each of the taxonomies we're registered against
 		foreach ( $this->bgeo->options()->taxonomies as $taxonomy )
 		{
-			add_action( $taxonomy . '_edit_form_fields', array( $this, 'term_metabox' ), 5, 2 );
+			add_action( $taxonomy . '_edit_form_fields', array( $this, 'metabox' ), 5, 2 );
 		}
 	}
 
@@ -97,7 +97,7 @@ class bGeo_Admin_Terms
 	}
 
 	// the metabox on terms
-	public function term_metabox( $tag, $taxonomy )
+	public function metabox( $tag, $taxonomy )
 	{
 		// must have this on the page in one of the metaboxes
 		// the nonce is then checked in $this->save_post()
