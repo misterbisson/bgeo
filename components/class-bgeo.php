@@ -190,19 +190,27 @@ class bGeo
 			return FALSE;
 		}
 
-		// get the viewport bounds as northwest and southeast corner points of the envelope
-		// @TODO: the text above doesn't match Yahoo's API, which uses southWest and northEast
-		// @TODO: the var names below suggest northeast and southest, surely that doesn't match what's actually happening
-		// @TODO: these are being used by LeafletJS, which also expects southwest and northeast. Those docs: http://leafletjs.com/reference.html#latlngbounds
+		// get the viewport bounds from the corner points of the envelope
 		$envelope = $bounds->envelope();
+
+		$geo->bounds_se = array(
+			'lat' => $envelope->components[0]->components[0]->y(),
+			'lon' => $envelope->components[0]->components[0]->x(),
+		);
+
 		$geo->bounds_ne = array(
 			'lat' => $envelope->components[0]->components[1]->y(),
 			'lon' => $envelope->components[0]->components[1]->x(),
 		);
 
-		$geo->bounds_se = array(
-			'lat' => $envelope->components[0]->components[0]->y(),
-			'lon' => $envelope->components[0]->components[0]->x(),
+		$geo->bounds_nw = array(
+			'lat' => $envelope->components[0]->components[2]->y(),
+			'lon' => $envelope->components[0]->components[2]->x(),
+		);
+
+		$geo->bounds_sw = array(
+			'lat' => $envelope->components[0]->components[3]->y(),
+			'lon' => $envelope->components[0]->components[3]->x(),
 		);
 
 		$geo->bounds = '{"type":"Feature","geometry":' . $bounds->out( 'json' ) . '}';

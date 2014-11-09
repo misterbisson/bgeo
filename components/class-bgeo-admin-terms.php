@@ -80,7 +80,7 @@ class bGeo_Admin_Terms
 	{
 
 		// check the nonce
-		if( ! $this->verify_nonce() )
+		if( ! $this->bgeo->admin()->verify_nonce() )
 		{
 			return;
 		}

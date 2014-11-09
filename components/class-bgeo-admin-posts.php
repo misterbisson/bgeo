@@ -245,10 +245,6 @@ class bGeo_Admin_Posts
 	public function locationsfromtext( $post_id, $text = NULL )
 	{
 
-error_reporting( E_STRICT );
-echo '<pre>';
-print_r( bgeo()->new_geo_by_woeid( 2486340 ) );
-die;
 		if ( ! ( $post = get_post( $post_id ) ) )
 		{
 			return FALSE;
@@ -302,39 +298,39 @@ die;
 		}
 
 		$locations = array();
+		foreach ( $raw_entities->matches->match as $raw_location )
+		{
 
-echo '<pre>';
+			// attempt to get the term for this woeid
+			$location = bgeo()->new_geo_by_woeid( $raw_location->place->woeId );
+			if ( is_wp_error( $location ) )
+			{
+				continue;
+			}
 
-		// extract the woeids from the results
-		$woeids = array_map( 'absint', 
-			wp_list_pluck(
-				wp_list_pluck(
-					$raw_entities->matches->match,
-					'place'
-				),
-				'woeId'
-			)
-		);
+			// remove the raw woe object to conserve space
+			unset( $location->woe_raw );
 
-		$query = 'SELECT * FROM geo.places WHERE woeid IN (SELECT woeid FROM geo.places WHERE woeid IN ('. implode(', ', $woeids ) .') )';
-		$raw_locations = bgeo()->yahoo()->yql( $query );
+			$locations[] = $location;
 
-print_r( $raw_locations );
+			// prefetch the belongto terms
+			// @TODO: should this move to the save_post hook?
+			foreach ( $location->woe_belongtos as $woeid )
+			{
+				bgeo()->new_geo_by_woeid( $woeid );
+			}
+		}
 
 /*
-		$query = 'SELECT * FROM geo.places.belongtos WHERE member_woeid IN (SELECT woeid FROM geo.places WHERE woeid IN ('. implode(', ', $woeids ) .') )';
-		$raw_belongtos = bgeo()->yahoo()->yql( $query );
-
-print_r( $raw_belongtos );
-*/
-/*
+@TODO: do we care to do this?
 		$meta = $this->get_post_meta( $this->post->ID );
-		$meta['locations']            = json_encode( $locations );
-		$meta['raw'] = $raw_entities;
+
+		$meta['entities_raw'] = $raw_entities->matches->match;
+
 		$this->update_post_meta( $this->post->ID, $meta );
 */
 
-		return $raw_locations;
+		return $locations;
 	}
 
 }//end bGeo_Admin_Posts class
