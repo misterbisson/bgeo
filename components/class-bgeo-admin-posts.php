@@ -193,6 +193,7 @@ class bGeo_Admin_Posts
 	 */
 	public function ajax_locationsfromtext()
 	{
+
 		// Check nonce
 		if ( ! isset( $_REQUEST['nonce'] ) || ! wp_verify_nonce( $_REQUEST['nonce'], 'bgeo' ) )
 		{
@@ -313,7 +314,7 @@ class bGeo_Admin_Posts
 			// remove the raw woe object to conserve space
 			unset( $location->woe_raw );
 
-			$locations[] = $location;
+			$locations[ $location->term_taxonomy_id ] = $location;
 
 			// prefetch the belongto terms
 			// @TODO: should this move to the save_post hook?
