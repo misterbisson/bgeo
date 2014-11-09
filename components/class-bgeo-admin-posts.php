@@ -38,7 +38,7 @@ class bGeo_Admin_Posts
 		add_action( 'admin_enqueue_scripts', array( $this , 'admin_enqueue_scripts' ) );
 
 		//add the geo metabox to the posts
-		// add_action( 'add_meta_boxes', array( $this, 'post_metaboxes' ), 10, 1 );
+		add_action( 'add_meta_boxes', array( $this, 'post_metaboxes' ), 10, 1 );
 	}
 
 	/**
@@ -49,7 +49,7 @@ class bGeo_Admin_Posts
 		switch ( $hook_suffix )
 		{
 			case 'post.php':
-/*
+
 				wp_enqueue_script(
 					'bgeo-admin-posts',
 					$this->bgeo->plugin_url . '/js/bgeo-admin-posts.js',
@@ -72,12 +72,14 @@ class bGeo_Admin_Posts
 					'post_id'          => $post->ID,
 					'nonce'            => wp_create_nonce( 'bgeo' ),
 					'ignored_by_tax'   => isset( $meta['ignored-tags'] ) ? $meta['ignored-tags'] : array(),
+					'taxonomy_map'     => array( 'geography' => $this->bgeo->geo_taxonomy_name ),
+					'local_taxonomies' => array( $this->bgeo->geo_taxonomy_name => $this->bgeo->geo_taxonomy_name ),
 					'suggested_terms'  => array(),
 				);
 
 				wp_localize_script( 'bgeo-admin-posts', 'bgeo', $localized_values );
 				add_action( 'admin_footer-post.php', array( $this, 'action_admin_footer_post' ) );
-*/
+
 				break;
 
 			default:
@@ -125,8 +127,14 @@ class bGeo_Admin_Posts
 	// should we add our metabox to this post type?
 	public function post_metaboxes( $post_type )
 	{
+		// is this in our post type whitelist?
+		if ( ! in_array( $post_type, $this->bgeo->post_types ) )
+		{
+			return;
+		}
+
 		add_meta_box(
-			$this->get_field_id( 'post_metabox' ),
+			$this->bgeo->admin()->get_field_id( 'post-metabox' ),
 			'Locations',
 			array( $this , 'post_metabox' ),
 			$post_type,
@@ -140,19 +148,13 @@ class bGeo_Admin_Posts
 	{
 		// must have this on the page in one of the metaboxes
 		// the nonce is then checked in $this->save_post()
-		$this->nonce_field();
+		$this->bgeo->admin()->nonce_field();
 
-
-		if( empty( $tag ) || empty( $taxonomy ) )
-		{
-			echo 'No tag or taxonomy set.';
-			return;
-		}
 
 		// add the form elements you want to use here.
 		// these are regular html form elements, but use $this->get_field_name( 'name' ) and $this->get_field_id( 'name' ) to identify them
 
-		include_once __DIR__ . '/templates/metabox-details.php';
+		include_once __DIR__ . '/templates/post-metabox.php';
 
 		// be sure to use proper validation on user input displayed here
 		// http://codex.wordpress.org/Data_Validation
@@ -190,15 +192,14 @@ class bGeo_Admin_Posts
 	 */
 	public function ajax_locationsfromtext()
 	{
-/*
 		// Check nonce
 		if ( ! isset( $_REQUEST['nonce'] ) || ! wp_verify_nonce( $_REQUEST['nonce'], 'bgeo' ) )
 		{
 			wp_send_json_error( array( 'message' => 'You do not have permission to be here.' ) );
 		}// end if
-*/
+
 		// text may be passed in via POST
-		// is taken from post content otherwise
+		// ...is taken from post content otherwise
 		$text = NULL;
 		$post_id = NULL;
 

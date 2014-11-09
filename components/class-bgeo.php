@@ -540,9 +540,9 @@ print_r( $wpdb );
 	public function register_taxonomy()
 	{
 
-		$post_types = get_post_types( array( 'public' => TRUE , 'publicly_queryable' => TRUE , ) , 'names' , 'or' ); // trivia: 'pages' are public, but not publicly queryable
+		$this->post_types = get_post_types( array( 'public' => TRUE , 'publicly_queryable' => TRUE , ) , 'names' , 'or' ); // trivia: 'pages' are public, but not publicly queryable
 
-		register_taxonomy( $this->geo_taxonomy_name, $post_types, array(
+		register_taxonomy( $this->geo_taxonomy_name, $this->post_types, array(
 			'label' => 'Geographies',
 			'labels' => array(
 				'singular_name' => 'Geography',

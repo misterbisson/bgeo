@@ -113,7 +113,7 @@ class bGeo_Admin_Terms
 		// add the form elements you want to use here.
 		// these are regular html form elements, but use $this->get_field_name( 'name' ) and $this->get_field_id( 'name' ) to identify them
 
-		include_once __DIR__ . '/templates/metabox-details.php';
+		include_once __DIR__ . '/templates/term-metabox.php';
 
 		// be sure to use proper validation on user input displayed here
 		// http://codex.wordpress.org/Data_Validation

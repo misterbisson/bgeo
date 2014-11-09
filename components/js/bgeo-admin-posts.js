@@ -33,6 +33,7 @@
 		$( '.the-tags' ).each(function() {
 			var taxonomy = $( this ).attr( 'id' ).substr( 10 );
 
+/*
 			// Settup ignored tags inputs
 			if ( bgeo.ignored_by_tax.hasOwnProperty( taxonomy ) ) {
 				$( bgeo.templates.ignore({
@@ -45,6 +46,7 @@
 					ignored_taxonomies: ''
 				}) ).insertAfter( this );
 			}//end else if
+*/
 
 			// Add suggestions interface to metaboxes
 			if ( bgeo.local_taxonomies.hasOwnProperty( taxonomy ) ) {
