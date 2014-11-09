@@ -244,6 +244,11 @@ class bGeo_Admin_Posts
 	 */
 	public function locationsfromtext( $post_id, $text = NULL )
 	{
+
+error_reporting( E_STRICT );
+echo '<pre>';
+print_r( bgeo()->new_geo_by_woeid( 2486340 ) );
+die;
 		if ( ! ( $post = get_post( $post_id ) ) )
 		{
 			return FALSE;

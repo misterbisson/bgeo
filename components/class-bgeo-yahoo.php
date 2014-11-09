@@ -73,7 +73,7 @@ class bGeo_Yahoo
 			return $cache_ttl_fail;
 		}
 
-		return $cache_ttl_success;
+		return $this->cache_ttl_success;
 	}
 
 	public function boss( $query, $api = 'web' )

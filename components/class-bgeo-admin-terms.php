@@ -129,4 +129,5 @@ class bGeo_Admin_Terms
 		// bgeo()->update_meta(), where the data is sanitized and
 		// validated before saving
 	}
+
 }//end bGeo_Admin_Terms class

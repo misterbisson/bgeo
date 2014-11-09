@@ -197,7 +197,7 @@ class bGeo_Admin
 				`woe_raw` text,
 				PRIMARY KEY (`term_taxonomy_id`),
 				SPATIAL KEY `point` (`point`),
-				SPATIAL KEY `bounds` (`bounds`)
+				SPATIAL KEY `bounds` (`bounds`),
 				KEY `woeid` (`woeid`)
 			) ENGINE=MyISAM $charset_collate
 		");
