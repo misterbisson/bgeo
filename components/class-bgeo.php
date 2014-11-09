@@ -429,7 +429,7 @@ print_r( $wpdb );
 	public function delete_term( $term_id, $tt_id, $taxonomy, $deleted_term )
 	{
 		// delete it
-		$this->bgeo->delete_geo( $term_id, $taxonomy, $deleted_term );
+		$this->delete_geo( $term_id, $taxonomy, $deleted_term );
 	}
 
 	// see get_term_by_ttid() in https://github.com/misterbisson/scriblio-authority/blob/master/components/class-authority-posttype.php#L893 
