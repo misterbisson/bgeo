@@ -18,13 +18,13 @@
 	<section ng-controller="PostController as postCtrl">
 		<ul>
 			<li ng-repeat="location in postCtrl.locations">
-				<a data-ttid="{{location.term_taxonomy_id}}">{{location.name}}</a> {{postCtrl.thang}}
+				<a ng-click="postCtrl.removeLocation(location)"><i class="fa fa-times-circle"></i></a> {{location.name}}
 			</li>
 		</ul>
 		<section ng-controller="SuggestionsController as suggestionsCtrl">
 			<ul >
 				<li ng-repeat="location in suggestionsCtrl.suggestions">
-					<a ng-click="suggestionsCtrl.clickr(location, postCtrl)" data-ttid="{{location.term_taxonomy_id}}">{{location.name}}</a>  {{postCtrl.thang}}
+					<a ng-click="suggestionsCtrl.acceptSuggestion(location)">{{location.name}}</a>
 				</li>
 			</ul>
 		</section>

@@ -297,7 +297,7 @@ print_r( $geo );
 			$geo->bounds = $envelope->asText();
 
 			// get the area of the envelope
-			$geo->area = (int) ( $envelope->area() * 100 );
+			$geo->area = (int) ( $envelope->area() * 10000 );
 
 			// if the point isn't set, generate one
 			if ( empty( $geo->point_lat ) || empty( $geo->point_lon ) )

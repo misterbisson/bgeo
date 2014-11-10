@@ -3,21 +3,25 @@
 
 	app.controller('PostController', function() {
 		this.locations = app.postLocations;
-		this.thang = 'This is a thang';
+		this.locationsTtids = [];
+
+		this.removeLocation = function(location) {
+			app.suggestedLocations[location.term_taxonomy_id] = location;
+			delete this.locations[location.term_taxonomy_id];
+		}
 	});
 
 	app.controller('SuggestionsController', function(){
 		this.suggestions = app.suggestedLocations;
 
-		this.clickr = function(location, postCtrl) {
-			console.log(location);
-			console.log(postCtrl.locations);
-			postCtrl.locations.push(location);
+		this.acceptSuggestion = function(location) {
+			app.postLocations[location.term_taxonomy_id] = location;
+			delete this.suggestions[location.term_taxonomy_id];
 		}
 	});
 
-	app.postLocations = [
-		{
+	app.postLocations = {
+		1222: {
 			"term_id": 1222,
 			"name": "Zipcode 95811",
 			"slug": "55805667-95811",
@@ -63,10 +67,10 @@
 				"lon": -121.510567
 			}
 		}
-	];
+	};
 
-	app.suggestedLocations = [
-		{
+	app.suggestedLocations = {
+		221: {
 			"term_id": 221,
 			"name": "Sacramento",
 			"slug": "2486340-sacramento",
@@ -112,7 +116,7 @@
 				"lon": -121.560509
 			}
 		},
-		{
+		222: {
 			"term_id": 222,
 			"name": "95811",
 			"slug": "55805667-95811",
@@ -158,5 +162,5 @@
 				"lon": -121.510567
 			}
 		}
-	];
+	};
 })();
