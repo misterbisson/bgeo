@@ -11,11 +11,12 @@
 	});
 
 	app.controller('SuggestionsController', ['$http', function($http){
-		this.suggestions = app.suggestedLocations;
+		var api = this;
+		api.suggestions = app.suggestedLocations;
 
 		this.acceptSuggestion = function(location) {
 			app.postLocations[location.term_taxonomy_id] = location;
-			delete this.suggestions[location.term_taxonomy_id];
+			delete api.suggestions[location.term_taxonomy_id];
 		}
 
 		this.isAccepted = function(location) {
@@ -28,7 +29,7 @@
 			}
 
 			// remove the location from the suggestion stack if it's present on the post
-			delete this.suggestions[location.term_taxonomy_id];
+			delete api.suggestions[location.term_taxonomy_id];
 			return true;
 		}
 
@@ -42,12 +43,7 @@
 					return;
 				}
 
-				console.log(data);
-
-				app.suggestedLocations = data;
-
-				console.log(app.suggestedLocations);
-
+				api.suggestions = data;
 			});
 		}
 
