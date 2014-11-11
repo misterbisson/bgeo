@@ -320,7 +320,8 @@ class bGeo_Admin_Posts
 
 		// check the API
 		// API results are cached in the underlying method
-		$query = 'SELECT * FROM geo.placemaker WHERE documentContent = "' . str_replace('"', '\'', wp_kses( remove_accents( $text ), array() ) ) . '" AND documentType="text/plain"';
+		// @TODO: reorder the final sanitization and move it out of the following line
+		$query = 'SELECT * FROM geo.placemaker WHERE documentContent = "' . str_replace('"', '\'', wp_kses( remove_accents( wp_trim_words( $text, 900, '' ) ), array() ) ) . '" AND documentType="text/plain"';
 		$raw_entities = bgeo()->yahoo()->yql( $query );
 
 		if ( ! isset( $raw_entities->matches->match ) )
