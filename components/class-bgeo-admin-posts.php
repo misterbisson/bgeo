@@ -28,7 +28,7 @@ class bGeo_Admin_Posts
 	{
 		add_action( 'admin_init', array( $this , 'admin_init' ) );
 
-//		add_action( 'save_post', array( $this, 'save_post' ), 10, 2 );
+		add_action( 'save_post', array( $this, 'save_post' ), 10, 2 );
 		add_action( 'wp_ajax_bgeo-locationsfromtext', array( $this, 'ajax_locationsfromtext' ) );
 	}
 
@@ -184,8 +184,67 @@ class bGeo_Admin_Posts
 
 	public function update_post_meta( $post_id, $meta )
 	{
-		return update_post_meta( $post_id, $this->bgeo->post_meta_key, $meta );
+
+		$terms = array();
+		if ( isset( $meta['term'] ) && is_array( $meta['term'] ) )
+		{
+			foreach ( $meta['term'] as $slug => $unused )
+			{
+				$term = get_term_by( 'slug', $slug, $this->bgeo->geo_taxonomy_name );
+
+				if ( ! is_wp_error( $term ) )
+				{
+					$terms[] = $term->term_id;
+				}
+			}
+		}
+
+		wp_set_object_terms( $post_id, $terms, $this->bgeo->geo_taxonomy_name, FALSE );
+
+		// return update_post_meta( $post_id, $this->bgeo->post_meta_key, $meta );
 	} // END update_post_meta
+
+	public function save_post( $post_id, $post )
+	{
+
+		// Check nonce
+		if ( ! $this->bgeo->admin()->verify_nonce() )
+		{
+			return;
+		}// end if
+
+		// Check that this isn't an autosave
+		if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE )
+		{
+			return;
+		}// end if
+
+		if ( ! is_object( $post ) )
+		{
+			return;
+		}// end if
+
+		// check post type is in our whitelist
+		if ( ! isset( $post->post_type ) || ! in_array( $post->post_type, $this->bgeo->post_types ) )
+		{
+			return;
+		}// end if
+
+		// Don't run on post revisions (almost always happens just before the real post is saved)
+		if ( wp_is_post_revision( $post->ID ) )
+		{
+			return;
+		}// end if
+
+		// Check the permissions
+		if ( ! current_user_can( 'edit_post', $post->ID ) )
+		{
+			return;
+		}// end if
+
+		$this->update_post_meta( $post->ID, stripslashes_deep( $_POST['bgeo'] ) );
+
+	} // END save_post
 
 	/**
 	 * post_id is required

@@ -16,7 +16,7 @@
 
 		this.acceptSuggestion = function(location) {
 			app.postLocations[location.term_taxonomy_id] = location;
-			delete api.suggestions[location.term_taxonomy_id];
+			delete this.suggestions[location.term_taxonomy_id];
 		}
 
 		this.isAccepted = function(location) {
@@ -29,7 +29,7 @@
 			}
 
 			// remove the location from the suggestion stack if it's present on the post
-			delete api.suggestions[location.term_taxonomy_id];
+			delete this.suggestions[location.term_taxonomy_id];
 			return true;
 		}
 
@@ -50,6 +50,7 @@
 	}]);
 
 	app.postLocations = {
+/*
 		1222: {
 			"term_id": 1222,
 			"name": "Zipcode 95811",
@@ -142,9 +143,11 @@
 				"lon": -121.510567
 			}
 		}
+*/
 	};
 
 	app.suggestedLocations = {
+/*
 		221: {
 			"term_id": 221,
 			"name": "Sacramento",
@@ -237,5 +240,6 @@
 				"lon": -121.510567
 			}
 		}
+*/
 	};
 })();

@@ -14,6 +14,7 @@ class bGeo
 	public $id_base = 'bgeo';
 	public $table = FALSE;
 	public $plugin_url = FALSE;
+	public $post_types = NULL;
 	public $geo_taxonomy_name = 'bgeo_tags';
 
 	public $admin = FALSE; // the admin object

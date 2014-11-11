@@ -19,6 +19,7 @@
 		<ul>
 			<li ng-repeat="location in postCtrl.locations">
 				<a ng-click="postCtrl.removeLocation(location)"><i class="fa fa-times-circle"></i></a> {{location.name}}
+				<input type="checkbox" checked name="bgeo[term][{{location.slug}}]" value="1">{{location.slug}}</li>
 			</li>
 		</ul>
 		<section ng-controller="SuggestionsController as suggestionsCtrl">
@@ -31,7 +32,7 @@
 		</section>
 	</section>
 </div>
-
+<!--
 <tr class="form-field">
 	<th scope="row" valign="top">
 		<label for="<?php echo bgeo()->admin()->get_field_id( 'locations' ); ?>">Locations named in this post</label>
@@ -49,3 +50,4 @@
 		<textarea rows="3" cols="50" name="<?php echo bgeo()->admin()->get_field_name( 'locations-belongtos' ); ?>" id="<?php echo bgeo()->admin()->get_field_id( 'locations-larger' ); ?>"><?php echo implode( ', ' , $locations_belongtos ); ?></textarea>
 	</td>
 </tr>
+-->
