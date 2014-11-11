@@ -27,6 +27,7 @@
 					<a ng-click="suggestionsCtrl.acceptSuggestion(location)">{{location.name}}</a>
 				</li>
 			</ul>
+			<a ng-click="suggestionsCtrl.getSuggestions()">get suggestions</a>
 		</section>
 	</section>
 </div>

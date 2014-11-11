@@ -193,13 +193,13 @@ class bGeo_Admin_Posts
 	 */
 	public function ajax_locationsfromtext()
 	{
-
+/*
 		// Check nonce
 		if ( ! isset( $_REQUEST['nonce'] ) || ! wp_verify_nonce( $_REQUEST['nonce'], 'bgeo' ) )
 		{
 			wp_send_json_error( array( 'message' => 'You do not have permission to be here.' ) );
 		}// end if
-
+*/
 		// text may be passed in via POST
 		// ...is taken from post content otherwise
 		$text = NULL;
@@ -295,9 +295,14 @@ class bGeo_Admin_Posts
 		$query = 'SELECT * FROM geo.placemaker WHERE documentContent = "' . esc_attr( wp_kses( $text, array() ) ) . '" AND documentType="text/plain"';
 		$raw_entities = bgeo()->yahoo()->yql( $query );
 
-		if ( ! isset( $raw_entities->matches->match[0] ) )
+		if ( ! isset( $raw_entities->matches->match ) )
 		{
 			return FALSE;
+		}
+
+		if ( ! is_array( $raw_entities->matches->match ) )
+		{
+			$raw_entities->matches->match = array( $raw_entities->matches->match );
 		}
 
 		$locations = array();

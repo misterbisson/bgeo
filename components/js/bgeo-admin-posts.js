@@ -3,7 +3,6 @@
 
 	app.controller('PostController', function() {
 		this.locations = app.postLocations;
-		this.locationsTtids = [];
 
 		this.removeLocation = function(location) {
 			app.suggestedLocations[location.term_taxonomy_id] = location;
@@ -11,7 +10,7 @@
 		}
 	});
 
-	app.controller('SuggestionsController', function(){
+	app.controller('SuggestionsController', ['$http', function($http){
 		this.suggestions = app.suggestedLocations;
 
 		this.acceptSuggestion = function(location) {
@@ -20,9 +19,39 @@
 		}
 
 		this.isAccepted = function(location) {
-			return app.postLocations[location.term_taxonomy_id].term_taxonomy_id == location.term_taxonomy_id;
+			// is the suggested location present on the post?
+			if( 
+				undefined == app.postLocations[location.term_taxonomy_id] ||
+				app.postLocations[location.term_taxonomy_id].term_taxonomy_id != location.term_taxonomy_id)
+			{
+				return false;
+			}
+
+			// remove the location from the suggestion stack if it's present on the post
+			delete this.suggestions[location.term_taxonomy_id];
+			return true;
 		}
-	});
+
+		this.getSuggestions = function() {
+			var url = 'http://bgeo.me/wp-admin/admin-ajax.php?action=bgeo-locationsfromtext&post_id=' + bgeo.post_id + '&nonce=' + bgeo.nonce;
+			$http.get(url).success(function (data) {
+				// sanity check
+				firstKey = Object.keys(data)[0];
+				if(undefined == data[firstKey])
+				{
+					return;
+				}
+
+				console.log(data);
+
+				app.suggestedLocations = data;
+
+				console.log(app.suggestedLocations);
+
+			});
+		}
+
+	}]);
 
 	app.postLocations = {
 		1222: {
