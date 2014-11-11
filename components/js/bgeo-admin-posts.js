@@ -2,7 +2,7 @@
 	var app = angular.module('bGeo', []);
 
 	app.controller('PostController', function() {
-		this.locations = app.postLocations;
+		this.locations = bgeo.post_geos;
 
 		this.removeLocation = function(location) {
 			app.suggestedLocations[location.term_taxonomy_id] = location;
@@ -12,18 +12,19 @@
 
 	app.controller('SuggestionsController', ['$http', function($http){
 		var api = this;
-		api.suggestions = app.suggestedLocations;
+//		api.suggestions = app.suggestedLocations;
+		api.suggestions = {};
 
 		this.acceptSuggestion = function(location) {
-			app.postLocations[location.term_taxonomy_id] = location;
+			bgeo.post_geos[location.term_taxonomy_id] = location;
 			delete this.suggestions[location.term_taxonomy_id];
 		}
 
 		this.isAccepted = function(location) {
 			// is the suggested location present on the post?
 			if( 
-				undefined == app.postLocations[location.term_taxonomy_id] ||
-				app.postLocations[location.term_taxonomy_id].term_taxonomy_id != location.term_taxonomy_id)
+				undefined == bgeo.post_geos[location.term_taxonomy_id] ||
+				bgeo.post_geos[location.term_taxonomy_id].term_taxonomy_id != location.term_taxonomy_id)
 			{
 				return false;
 			}

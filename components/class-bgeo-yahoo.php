@@ -5,6 +5,7 @@ This class includes the yahoo API getters.
 
 class bGeo_Yahoo
 {
+	public $version = 1; // allow cachebusting when the model changes
 	public $cache_ttl_fail = 1013; // prime numbers make good TTLs
 	public $cache_ttl_success = 0; // indefinitely
 	public $errors = array();
@@ -62,7 +63,7 @@ class bGeo_Yahoo
 
 	public function cache_key( $component, $query )
 	{
-		return md5( $component . serialize( $query ) );
+		return md5( $this->version . $component . serialize( $query ) );
 	}
 
 	public function cache_ttl( $code )

@@ -140,6 +140,29 @@ class bGeo
 	} // END new_geometry
 
 	// get a geo record
+	public function get_object_geos( $post_id )
+	{
+		$terms = wp_get_object_terms( $post_id, $this->geo_taxonomy_name, array( 'fields' => 'ids' ) );
+		if ( ! is_array( $terms ) )
+		{
+			return FALSE;
+		}
+
+		$geos = array();
+		foreach ( $terms as $term )
+		{
+			if( ! $geo = $this->get_geo( $term, $this->geo_taxonomy_name ) )
+			{
+				continue;
+			}
+
+			$geos[ $geo->term_taxonomy_id ] = $geo;
+		}
+
+		return $geos;
+	}
+
+	// get a geo record
 	public function get_geo( $term_id, $taxonomy )
 	{
 		$term = get_term( $term_id, $taxonomy );
@@ -505,6 +528,11 @@ print_r( $wpdb );
 		// extract any results
 		if ( isset( $woe_belongtos->place ) )
 		{
+			if ( ! is_array( $woe_belongtos->place ) )
+			{
+				$woe_belongtos->place = array( $woe_belongtos->place );
+			}
+
 			$woe_belongtos = wp_parse_id_list( wp_list_pluck( $woe_belongtos->place, 'woeid' ) );
 		}
 		$geo->woe_belongtos = $woe_belongtos;

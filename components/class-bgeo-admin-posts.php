@@ -30,7 +30,7 @@ class bGeo_Admin_Posts
 
 		add_action( 'save_post', array( $this, 'save_post' ), 10, 2 );
 		add_action( 'wp_ajax_bgeo-locationsfromtext', array( $this, 'ajax_locationsfromtext' ) );
-	}
+	}//end init
 
 	public function admin_init()
 	{
@@ -79,14 +79,11 @@ class bGeo_Admin_Posts
 				$localized_values = array(
 					'post_id'          => $post->ID,
 					'nonce'            => wp_create_nonce( 'bgeo' ),
-					'ignored_by_tax'   => isset( $meta['ignored-tags'] ) ? $meta['ignored-tags'] : array(),
-					'taxonomy_map'     => array( 'geography' => $this->bgeo->geo_taxonomy_name ),
-					'local_taxonomies' => array( $this->bgeo->geo_taxonomy_name => $this->bgeo->geo_taxonomy_name ),
-					'suggested_terms'  => array(),
+					'geo_suggestions' => (object) array(),
+					'post_geos'       => (object) $this->bgeo->get_object_geos( $post->ID ),
 				);
 
 				wp_localize_script( 'bgeo-admin-posts', 'bgeo', $localized_values );
-				add_action( 'admin_footer-post.php', array( $this, 'action_admin_footer_post' ) );
 
 				break;
 
@@ -94,36 +91,6 @@ class bGeo_Admin_Posts
 				return;
 		}
 	}//end admin_enqueue_scripts
-
-	/**
-	 * Set handlebars.js templates
-	 */
-	public function action_admin_footer_post()
-	{
-		global $action;
-
-		if ( 'edit' !== $action )
-		{
-			return;
-		}//end if
-		?>
-		<script id="bgeo-handlebars-tags" type="text/x-handlebars-template">
-			<div class="bgeo">
-				<div>
-					<a href="#" class="bgeo-taggroup bgeo-suggested">Suggested tags</a>
-					<a href="#" class="bgeo-refresh">Refresh</a>
-					<div class="bgeo-taglist bgeo-suggested-list">Refreshing...</div>
-				</div>
-			</div>
-		</script>
-		<script id="bgeo-handlebars-nonce" type="text/x-handlebars-template">
-			<input type="hidden" id="bgeo-nonce" name="bgeo-nonce" value="{{nonce}}" />
-		</script>
-		<script id="bgeo-handlebars-tag" type="text/x-handlebars-template">
-			<span><a class="bgeo-ignore" title="Ignore tag"><i class="fa fa-times-circle"></i></a>&nbsp;<a class="bgeo-use">{{name}}</a></span>
-		</script>
-		<?php
-	}//end action_admin_footer_post
 
 	// should we add our metabox to this post type?
 	public function metaboxes( $post_type )
@@ -142,7 +109,7 @@ class bGeo_Admin_Posts
 			'normal',
 			'high'
 		);
-	}
+	}//end metaboxes
 
 	// the metabox on posts
 	public function metabox( $post )
@@ -170,8 +137,9 @@ class bGeo_Admin_Posts
 		// captures the $_POST var, and then passes it to
 		// bgeo()->update_meta(), where the data is sanitized and
 		// validated before saving
-	}
+	}//end metaboxe
 
+	// @TODO: this method will need to be refactored based on what we do in update_post_meta()
 	public function get_post_meta( $post_id )
 	{
 		if ( ! $meta = get_post_meta( $post_id, $this->bgeo->id_base, TRUE ) )
@@ -182,6 +150,7 @@ class bGeo_Admin_Posts
 		return $meta;
 	} // END get_post_meta
 
+	// @TODO: this method is incomplete
 	public function update_post_meta( $post_id, $meta )
 	{
 
@@ -244,7 +213,7 @@ class bGeo_Admin_Posts
 
 		$this->update_post_meta( $post->ID, stripslashes_deep( $_POST['bgeo'] ) );
 
-	} // END save_post
+	}// END save_post
 
 	/**
 	 * post_id is required
@@ -351,7 +320,7 @@ class bGeo_Admin_Posts
 
 		// check the API
 		// API results are cached in the underlying method
-		$query = 'SELECT * FROM geo.placemaker WHERE documentContent = "' . esc_attr( wp_kses( $text, array() ) ) . '" AND documentType="text/plain"';
+		$query = 'SELECT * FROM geo.placemaker WHERE documentContent = "' . str_replace('"', '\'', wp_kses( remove_accents( $text ), array() ) ) . '" AND documentType="text/plain"';
 		$raw_entities = bgeo()->yahoo()->yql( $query );
 
 		if ( ! isset( $raw_entities->matches->match ) )
@@ -388,16 +357,7 @@ class bGeo_Admin_Posts
 			}
 		}
 
-/*
-@TODO: do we care to do this?
-		$meta = $this->get_post_meta( $this->post->ID );
-
-		$meta['entities_raw'] = $raw_entities->matches->match;
-
-		$this->update_post_meta( $this->post->ID, $meta );
-*/
-
 		return $locations;
-	}
+	}//end locationsfromtext
 
 }//end bGeo_Admin_Posts class
