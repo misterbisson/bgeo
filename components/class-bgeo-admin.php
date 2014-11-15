@@ -158,7 +158,10 @@ class bGeo_Admin
 		$options = get_option( $this->bgeo->id_base );
 
 		// initial activation and default options
-		if( ! isset( $options['version'] ) )
+		if(
+			! isset( $options['version']  ) ||
+			$this->bgeo->version > $options['version']
+		)
 		{
 			// create the table
 			$this->create_table();

@@ -10,7 +10,7 @@ https://github.com/misterbisson/geoPHP
 
 class bGeo
 {
-	public $version = 1;
+	public $version = 2;
 	public $id_base = 'bgeo';
 	public $table = FALSE;
 	public $plugin_url = FALSE;
@@ -464,7 +464,7 @@ print_r( $wpdb );
 		$this->delete_geo( $term_id, $taxonomy, $deleted_term );
 	}
 
-	// see get_term_by_ttid() in https://github.com/misterbisson/scriblio-authority/blob/master/components/class-authority-posttype.php#L893 
+	// see get_term_by_ttid() in https://github.com/misterbisson/scriblio-authority/blob/master/components/class-authority-posttype.php#L893
 	// for my thoughts on why this is necessary
 	public function get_geo_by_ttid( $tt_id )
 	{
@@ -507,6 +507,7 @@ print_r( $wpdb );
 			return $this->get_geo_by_woeid( $woeid );
 		}
 
+		// get all details for this WOEID
 		$query = 'SELECT * FROM geo.places WHERE woeid IN (SELECT woeid FROM geo.places WHERE woeid IN ('. $woeid .') )';
 		$woe_raw = bgeo()->yahoo()->yql( $query );
 
@@ -537,12 +538,51 @@ print_r( $wpdb );
 		}
 		$geo->woe_belongtos = $woe_belongtos;
 
+		// whatsoever shall we name this geo?
+		$term_name = wp_kses( $geo->woe_raw->name, array() );
+
+		// the term description
+		$description_parts = array();
+		if (
+			! empty( $geo->woe_raw->placeTypeName->content )
+		)
+		{
+			$description_parts[] = strtolower( $geo->woe_raw->placeTypeName->content );
+		}
+
+		// if admin2 is present and not the same as the geo name, make that part of the description
+		if (
+			! empty( $geo->woe_raw->admin2->content ) &&
+			$geo->woe_raw->name != $geo->woe_raw->admin2->content
+		)
+		{
+			$description_parts[] = $geo->woe_raw->admin2->content;
+		}
+
+		// if admin1 is present and not the same as the geo name or admin2, make that part of the description
+		if (
+			! empty( $geo->woe_raw->admin1->content ) &&
+			$geo->woe_raw->admin2->content != $geo->woe_raw->admin1->content &&
+			$geo->woe_raw->name != $geo->woe_raw->admin1->content
+		)
+		{
+			$description_parts[] = $geo->woe_raw->admin1->content;
+		}
+
+		// if the country name is present and not the same as the geo name, make that part of the description
+		if (
+			! empty( $geo->woe_raw->country->content ) &&
+			$geo->woe_raw->name != $geo->woe_raw->country->content
+		)
+		{
+			$description_parts[] = $geo->woe_raw->country->content;
+		}
+
 		// get or create a term for this geo
-		$term_name = wp_kses( $geo->woe_raw->name , array() );
-		$term_slug = (int) $geo->woe_raw->woeid . '-' . sanitize_title_with_dashes( $term_name );
+		$term_slug = (int) $geo->woe_raw->woeid . '-' . sanitize_title_with_dashes( str_replace( array( '/', '_' ), ' ', $term_name ) );
 		if( ! $term = get_term_by( 'slug', $term_slug, $this->geo_taxonomy_name ) )
 		{
-			$new_term = (object) wp_insert_term( $term_name, $this->geo_taxonomy_name, array( 'slug' => $term_slug ) );
+			$new_term = (object) wp_insert_term( $term_name, $this->geo_taxonomy_name, array( 'slug' => $term_slug , 'description' => implode( ', ', $description_parts ) ) );
 			$term = get_term( $new_term->term_id, $this->geo_taxonomy_name );
 		}
 

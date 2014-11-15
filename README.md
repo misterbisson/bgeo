@@ -16,6 +16,10 @@ bGeo connects your posts to the physical world.
 
 This section needs development.
 
+### = geoPHP =
+
+This plugin depends on the included [geoPHP](https://github.com/phayes/geoPHP) library by Paul Hayes. [The documentation](https://github.com/phayes/geoPHP/wiki/API-Reference) is quite good.
+
 ### = In the WordPress.org plugin repo =
 
 Eventually at: https://wordpress.org/plugins/bgeo/

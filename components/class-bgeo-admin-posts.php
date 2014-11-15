@@ -77,8 +77,9 @@ class bGeo_Admin_Posts
 				$meta = $this->get_post_meta( $post->ID );
 
 				$localized_values = array(
-					'post_id'          => $post->ID,
-					'nonce'            => wp_create_nonce( 'bgeo' ),
+					'endpoint'        => admin_url( '/admin-ajax.php?action=bgeo-locationsfromtext' ),
+					'nonce'           => wp_create_nonce( 'bgeo' ),
+					'post_id'         => $post->ID,
 					'geo_suggestions' => (object) array(),
 					'post_geos'       => (object) $this->bgeo->get_object_geos( $post->ID ),
 				);
@@ -340,7 +341,8 @@ class bGeo_Admin_Posts
 
 			// attempt to get the term for this woeid
 			$location = bgeo()->new_geo_by_woeid( $raw_location->place->woeId );
-			if ( is_wp_error( $location ) )
+
+			if ( ! $location || is_wp_error( $location ) )
 			{
 				continue;
 			}
@@ -352,9 +354,12 @@ class bGeo_Admin_Posts
 
 			// prefetch the belongto terms
 			// @TODO: should this move to the save_post hook?
-			foreach ( $location->woe_belongtos as $woeid )
+			if ( isset( $location->woe_belongtos ) && is_array( $location->woe_belongtos ) )
 			{
-				bgeo()->new_geo_by_woeid( $woeid );
+				foreach ( $location->woe_belongtos as $woeid )
+				{
+					bgeo()->new_geo_by_woeid( $woeid );
+				}
 			}
 		}
 

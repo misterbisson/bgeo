@@ -35,7 +35,7 @@
 		}
 
 		this.getSuggestions = function() {
-			var url = 'http://bgeo.me/wp-admin/admin-ajax.php?action=bgeo-locationsfromtext&post_id=' + bgeo.post_id + '&nonce=' + bgeo.nonce;
+			var url = bgeo.endpoint + '&post_id=' + bgeo.post_id + '&nonce=' + bgeo.nonce;
 			$http.get(url).success(function (data) {
 				// sanity check
 				firstKey = Object.keys(data)[0];

@@ -25,7 +25,7 @@
 		<section ng-controller="SuggestionsController as suggestionsCtrl">
 			<ul >
 				<li ng-repeat="location in suggestionsCtrl.suggestions" ng-hide="suggestionsCtrl.isAccepted(location)">
-					<a ng-click="suggestionsCtrl.acceptSuggestion(location)">{{location.name}}</a>
+					<a ng-click="suggestionsCtrl.acceptSuggestion(location)">{{location.name}} ({{location.description}})</a>
 				</li>
 			</ul>
 			<a ng-click="suggestionsCtrl.getSuggestions()">get suggestions</a>
