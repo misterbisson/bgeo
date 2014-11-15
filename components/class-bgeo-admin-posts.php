@@ -30,6 +30,7 @@ class bGeo_Admin_Posts
 
 		add_action( 'save_post', array( $this, 'save_post' ), 10, 2 );
 		add_action( 'wp_ajax_bgeo-locationsfromtext', array( $this, 'ajax_locationsfromtext' ) );
+		add_action( 'wp_ajax_bgeo-locationlookup', array( $this, 'ajax_locationlookup' ) );
 	}//end init
 
 	public function admin_init()
@@ -308,7 +309,7 @@ class bGeo_Admin_Posts
 			if ( ! is_array( $terms ) )
 			{
 				$terms = array();
-			}
+			}//end if
 
 			// assemble everything and apply filters so other plugins can get involved
 			// note that HTML is stripped before sending the text to the API
@@ -322,18 +323,18 @@ class bGeo_Admin_Posts
 		// check the API
 		// API results are cached in the underlying method
 		// @TODO: reorder the final sanitization and move it out of the following line
-		$query = 'SELECT * FROM geo.placemaker WHERE documentContent = "' . str_replace('"', '\'', wp_kses( remove_accents( wp_trim_words( $text, 900, '' ) ), array() ) ) . '" AND documentType="text/plain"';
+		$query = 'SELECT * FROM geo.placemaker WHERE documentContent = "' . str_replace( '"', '\'', wp_kses( remove_accents( wp_trim_words( $text, 900, '' ) ), array() ) ) . '" AND documentType="text/plain"';
 		$raw_entities = bgeo()->yahoo()->yql( $query );
 
 		if ( ! isset( $raw_entities->matches->match ) )
 		{
 			return FALSE;
-		}
+		}//end if
 
 		if ( ! is_array( $raw_entities->matches->match ) )
 		{
 			$raw_entities->matches->match = array( $raw_entities->matches->match );
-		}
+		}//end if
 
 		$locations = array();
 		foreach ( $raw_entities->matches->match as $raw_location )
@@ -345,25 +346,95 @@ class bGeo_Admin_Posts
 			if ( ! $location || is_wp_error( $location ) )
 			{
 				continue;
-			}
+			}//end if
 
 			// remove the raw woe object to conserve space
-			unset( $location->woe_raw );
+			unset( $location->api_raw );
 
 			$locations[ $location->term_taxonomy_id ] = $location;
 
 			// prefetch the belongto terms
 			// @TODO: should this move to the save_post hook?
-			if ( isset( $location->woe_belongtos ) && is_array( $location->woe_belongtos ) )
+			if ( isset( $location->belongtos ) && is_array( $location->belongtos ) )
 			{
-				foreach ( $location->woe_belongtos as $woeid )
+				foreach ( $location->belongtos as $belongto )
 				{
-					bgeo()->new_geo_by_woeid( $woeid );
+					if ( 'woeid' != $belongto->api )
+					{
+						continue;
+					}
+
+					bgeo()->new_geo_by_woeid( $belongto->api_id );
 				}
-			}
+			}//end if
 		}
 
 		return $locations;
 	}//end locationsfromtext
+
+	public function ajax_locationlookup()
+	{
+/*
+		// Check nonce
+		if ( ! isset( $_REQUEST['nonce'] ) || ! wp_verify_nonce( $_REQUEST['nonce'], 'bgeo' ) )
+		{
+			wp_send_json_error( array( 'message' => 'You do not have permission to be here.' ) );
+		}// end if
+*/
+		// the query string is required
+		$query = NULL;
+		if ( isset( $_GET['query'] ) )
+		{
+			// sanitization here is sort of redundent, but better to be sure here
+			$query = trim( wp_kses( $_GET['query'], array() ) );
+		}//end if
+
+		// the query string must be 3 chars or longer
+		if ( 3 > strlen( $query ) )
+		{
+			wp_send_json_error( array( 'message' => 'There was an API error.' ) );
+		}//end if
+
+		$locations = $this->locationlookup( $query );
+
+		if ( FALSE === $locations )
+		{
+			wp_send_json_error( array( 'message' => 'There was an API error.' ) );
+		}//end if
+
+		wp_send_json( $locations );
+	}//end ajax_locationsfromcontent
+
+	public function locationlookup( $query = NULL )
+	{
+		// validate that we have a sring, and that it's at least 3 chars
+		if (
+			! is_string( $query ) ||
+			3 > strlen( $query )
+		)
+		{
+			return FALSE;
+		}//end if
+
+		// check the API
+		// API results are cached in the underlying method
+		$query = 'SELECT * FROM geo.placefinder where text = "' . str_replace( '"', '\'', $query ) . '"';
+		$raw_result = bgeo()->yahoo()->yql( $query );
+
+		if ( ! isset( $raw_result->Result ) )
+		{
+			return FALSE;
+		}//end if
+
+		if ( ! is_array( $raw_result->Result ) )
+		{
+			$raw_result->Result = array( $raw_result->Result );
+		}//end if
+
+
+print_r( $raw_result );
+
+
+	}//end locationlookup
 
 }//end bGeo_Admin_Posts class

@@ -21,6 +21,12 @@ class bGeo
 	public $tools = FALSE; // the tools object
 	public $yahoo = FALSE; // the yahoo object
 
+	public $apis = array(
+		'woeid' => 'Yahoo! Where on Earth ID',
+		'yaddr' => 'Yahoo! address lookup',
+		'4sqrv' => 'Foursquare venue',
+	);
+
 	public $options_default = array(
 		'taxonomies' => array(
 			'category',
@@ -179,9 +185,10 @@ class bGeo
 				AsText(point) AS point,
 				AsText(bounds) AS bounds,
 				area,
-				woeid,
-				woe_belongtos,
-				woe_raw
+				api,
+				api_id,
+				api_raw,
+				belongtos
 			FROM ' . $this->table . '
 			WHERE term_taxonomy_id = %d',
 			$term->term_taxonomy_id
@@ -240,8 +247,8 @@ class bGeo
 		$geo->bounds = '{"type":"Feature","geometry":' . $bounds->out( 'json' ) . '}';
 
 		// unserialize the woe objects/arrays
-		$geo->woe_belongtos = maybe_unserialize( $geo->woe_belongtos );
-		$geo->woe_raw = maybe_unserialize( $geo->woe_raw );
+		$geo->belongtos = maybe_unserialize( $geo->belongtos );
+		$geo->api_raw = maybe_unserialize( $geo->api_raw );
 
 /*
 echo '<pre>';
@@ -346,9 +353,10 @@ print_r( $geo );
 		// set defaults for the WOE columns
 		$geo = (object) array_merge(
 			array(
-				'woeid' => NULL,
-				'woe_belongtos' => NULL,
-				'woe_raw' => NULL,
+				'api' => NULL,
+				'api_id' => NULL,
+				'api_raw' => NULL,
+				'belongtos' => NULL,
 			),
 			(array) $geo
 		);
@@ -362,35 +370,39 @@ print_r( $geo );
 				point,
 				bounds,
 				area,
-				woeid,
-				woe_belongtos,
-				woe_raw
+				api,
+				api_id,
+				api_raw,
+				belongtos
 			)
 			VALUES(
 				%1$d,
 				POINT( %2$f, %3$f ),
 				GeomFromText( "%4$s" ),
-				%5$d,
-				%6$d,
+				"%5$s",
+				"%6$s",
 				"%7$s",
-				"%8$s"
+				"%8$s",
+				"%9$s"
 			)
 			ON DUPLICATE KEY UPDATE
 				point = VALUES( point ),
 				bounds = VALUES( bounds ),
 				area = VALUES( area ),
-				woeid = VALUES( woeid ),
-				woe_belongtos = VALUES( woe_belongtos ),
-				woe_raw = VALUES( woe_raw )
+				api = VALUES( api ),
+				api_id = VALUES( api_id ),
+				api_raw = VALUES( api_raw ),
+				belongtos = VALUES( belongtos )
 			',
 			$term->term_taxonomy_id,
 			floatval( $geo->point_lon ),
 			floatval( $geo->point_lat ),
 			$geo->bounds,
 			$geo->area,
-			absint( $geo->woeid ),
-			maybe_serialize( wp_parse_id_list( $geo->woe_belongtos ) ),
-			maybe_serialize( json_decode( sanitize_text_field( json_encode( $geo->woe_raw ) ) ) ) // see http://kitchen.gigaom.com/2014/06/30/quickly-sanitizing-api-feedback/ for how this sanitizes the data without breaking it
+			sanitize_title_with_dashes( $geo->api ),
+			sanitize_title_with_dashes( $geo->api_id ),
+			maybe_serialize( $geo->belongtos ),
+			maybe_serialize( json_decode( sanitize_text_field( json_encode( $geo->api_raw ) ) ) ) // see http://kitchen.gigaom.com/2014/06/30/quickly-sanitizing-api-feedback/ for how this sanitizes the data without breaking it
 		);
 
 /*
@@ -478,17 +490,44 @@ print_r( $wpdb );
 		return $this->get_geo( (int) $term_id_and_tax->term_id, $term_id_and_tax->taxonomy );
 	}
 
-	public function get_geo_by_woeid( $woeid )
+	public function get_geo_by_api_id( $api, $api_id )
 	{
+
+		// is this a valid API key?
+		if ( ! isset( $api, $api_id ) )
+		{
+			$error = new WP_Error( 'invalid_api_id', 'API and API ID key are both required' );
+			return $error;
+		}
+
+
+		// is this a valid API key?
+		if ( ! isset( $this->apis[ $api ] ) )
+		{
+			$error = new WP_Error( 'invalid_api_id', 'Invalid API' );
+			return $error;
+		}
+
 		global $wpdb;
-		$tt_id = $wpdb->get_var( $wpdb->prepare( "SELECT term_taxonomy_id FROM $this->table WHERE woeid = %d LIMIT 1", absint( $woeid ) ) );
+		$tt_id = $wpdb->get_var( $wpdb->prepare( "SELECT term_taxonomy_id
+			FROM $this->table
+			WHERE 1 = 1
+				AND api = %s
+				AND api_id = %s
+			LIMIT 1", $api, $api_id ) );
 
 		if( ! $tt_id )
 		{
-			$error = new WP_Error( 'invalid_woeid', 'Invalid WOEID' );
+			$error = new WP_Error( 'invalid_api_id', 'Invalid or unknown API ID' );
 			return $error;
 		}
 		return $this->get_geo_by_ttid( $tt_id );
+	}
+
+
+	public function get_geo_by_woeid( $woeid )
+	{
+		return $this->get_geo_by_api_id( 'woeid', $woeid );
 	}
 
 	public function new_geo_by_woeid( $woeid )
@@ -502,84 +541,91 @@ print_r( $wpdb );
 		}
 
 		// check for an existing geo object for this woeid
-		if ( ! is_wp_error( $this->get_geo_by_woeid( $woeid ) ) )
+		if ( ! is_wp_error( $this->get_geo_by_api_id( 'woeid', $woeid ) ) )
 		{
-			return $this->get_geo_by_woeid( $woeid );
+			return $this->get_geo_by_api_id( 'woeid', $woeid );
 		}
 
 		// get all details for this WOEID
 		$query = 'SELECT * FROM geo.places WHERE woeid IN (SELECT woeid FROM geo.places WHERE woeid IN ('. $woeid .') )';
-		$woe_raw = bgeo()->yahoo()->yql( $query );
+		$api_raw = bgeo()->yahoo()->yql( $query );
 
 		// sanity check the response
-		if ( ! isset( $woe_raw->place ) )
+		if ( ! isset( $api_raw->place ) )
 		{
 			$error = new WP_Error( 'invalid_woeid', 'API didn\'t return a location, or returned error when looking up WOEID: '. implode( "\n", bgeo()->yahoo()->errors ) );
 			return $error;
 		}
 
 		$geo = (object) array();
-		$geo->woe_raw = $woe_raw->place;
-		$geo->woeid = absint( $woe_raw->place->woeid );
+		$geo->api = 'woeid';
+		$geo->api_raw = $api_raw->place;
+		$geo->api_id = absint( $api_raw->place->woeid );
 
 		// get the belongto woeids
 		$query = 'SELECT woeid FROM geo.places.belongtos WHERE member_woeid IN (SELECT woeid FROM geo.places WHERE woeid IN ('. $woeid .') )';
-		$woe_belongtos = bgeo()->yahoo()->yql( $query );
+		$belongtos = bgeo()->yahoo()->yql( $query );
 
 		// extract any results
-		if ( isset( $woe_belongtos->place ) )
+		$geo->belongtos= array();
+		if ( isset( $belongtos->place ) )
 		{
-			if ( ! is_array( $woe_belongtos->place ) )
+			if ( ! is_array( $belongtos->place ) )
 			{
-				$woe_belongtos->place = array( $woe_belongtos->place );
+				$belongtos->place = array( $belongtos->place );
 			}
 
-			$woe_belongtos = wp_parse_id_list( wp_list_pluck( $woe_belongtos->place, 'woeid' ) );
+			foreach ( $belongtos->place as $temp )
+			{
+				$geo->belongtos[] = (object) array(
+					'api' => 'woeid',
+					'api_id' => $temp->woeid,
+				);
+			}
 		}
-		$geo->woe_belongtos = $woe_belongtos;
 
 		// whatsoever shall we name this geo?
-		$term_name = wp_kses( $geo->woe_raw->name, array() );
+		$term_name = wp_kses( $geo->api_raw->name, array() );
 
 		// the term description
 		$description_parts = array();
 		if (
-			! empty( $geo->woe_raw->placeTypeName->content )
+			! empty( $geo->api_raw->placeTypeName->content )
 		)
 		{
-			$description_parts[] = strtolower( $geo->woe_raw->placeTypeName->content );
+			$description_parts[] = strtolower( $geo->api_raw->placeTypeName->content );
 		}
 
 		// if admin2 is present and not the same as the geo name, make that part of the description
 		if (
-			! empty( $geo->woe_raw->admin2->content ) &&
-			$geo->woe_raw->name != $geo->woe_raw->admin2->content
+			! empty( $geo->api_raw->admin2->content ) &&
+			$geo->api_raw->name != $geo->api_raw->admin2->content
 		)
 		{
-			$description_parts[] = $geo->woe_raw->admin2->content;
+			$description_parts[] = $geo->api_raw->admin2->content;
 		}
 
 		// if admin1 is present and not the same as the geo name or admin2, make that part of the description
 		if (
-			! empty( $geo->woe_raw->admin1->content ) &&
-			$geo->woe_raw->admin2->content != $geo->woe_raw->admin1->content &&
-			$geo->woe_raw->name != $geo->woe_raw->admin1->content
+			! empty( $geo->api_raw->admin1->content ) &&
+			$geo->api_raw->admin2->content != $geo->api_raw->admin1->content &&
+			$geo->api_raw->name != $geo->api_raw->admin1->content
 		)
 		{
-			$description_parts[] = $geo->woe_raw->admin1->content;
+			$description_parts[] = $geo->api_raw->admin1->content;
 		}
 
 		// if the country name is present and not the same as the geo name, make that part of the description
 		if (
-			! empty( $geo->woe_raw->country->content ) &&
-			$geo->woe_raw->name != $geo->woe_raw->country->content
+			! empty( $geo->api_raw->country->content ) &&
+			$geo->api_raw->name != $geo->api_raw->country->content
 		)
 		{
-			$description_parts[] = $geo->woe_raw->country->content;
+			$description_parts[] = $geo->api_raw->country->content;
 		}
 
 		// get or create a term for this geo
-		$term_slug = (int) $geo->woe_raw->woeid . '-' . sanitize_title_with_dashes( str_replace( array( '/', '_' ), ' ', $term_name ) );
+		$term_slug = (int) $geo->api_raw->woeid . '-' . sanitize_title_with_dashes( str_replace( array( '/', '_' ), ' ', $term_name ) );
 		if( ! $term = get_term_by( 'slug', $term_slug, $this->geo_taxonomy_name ) )
 		{
 			$new_term = (object) wp_insert_term( $term_name, $this->geo_taxonomy_name, array( 'slug' => $term_slug , 'description' => implode( ', ', $description_parts ) ) );
@@ -594,17 +640,31 @@ print_r( $wpdb );
 		}
 
 		// get the centroid for this geo
-		$point = $this->new_geometry( '{ "type": "Point", "coordinates": [' . $geo->woe_raw->centroid->longitude . ', ' . $geo->woe_raw->centroid->latitude . '] }', 'json' );
+		$point = $this->new_geometry( '{ "type": "Point", "coordinates": [' . $geo->api_raw->centroid->longitude . ', ' . $geo->api_raw->centroid->latitude . '] }', 'json' );
 		$geo->point_lat = $point->getY();
 		$geo->point_lon = $point->getX();
 
 		// get the bounding box for this geo
-		$bounds = $this->new_geometry( '{ "type": "LineString", "coordinates": [ [' . $geo->woe_raw->boundingBox->southWest->longitude . ', ' . $geo->woe_raw->boundingBox->southWest->latitude . '], [' . $geo->woe_raw->boundingBox->northEast->longitude . ', ' . $geo->woe_raw->boundingBox->northEast->latitude . '] ]}', 'json' );
+		$bounds = $this->new_geometry( '{ "type": "LineString", "coordinates": [ [' . $geo->api_raw->boundingBox->southWest->longitude . ', ' . $geo->api_raw->boundingBox->southWest->latitude . '], [' . $geo->api_raw->boundingBox->northEast->longitude . ', ' . $geo->api_raw->boundingBox->northEast->latitude . '] ]}', 'json' );
 		$geo->bounds = $bounds->envelope()->out( 'json' );
 
 		$this->update_geo( $term->term_id, $term->taxonomy, $geo );
 		return $this->get_geo( $term->term_id, $term->taxonomy );
 	}
+
+	public function get_geo_by_yaddrh( $woeid )
+	{
+		global $wpdb;
+		$tt_id = $wpdb->get_var( $wpdb->prepare( "SELECT term_taxonomy_id FROM $this->table WHERE woeid = %d LIMIT 1", absint( $woeid ) ) );
+
+		if( ! $tt_id )
+		{
+			$error = new WP_Error( 'invalid_woeid', 'Invalid WOEID' );
+			return $error;
+		}
+		return $this->get_geo_by_ttid( $tt_id );
+	}
+
 
 	public function register_taxonomy()
 	{

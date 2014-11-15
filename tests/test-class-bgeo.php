@@ -84,7 +84,7 @@ class bGeo_Test extends WP_UnitTestCase
 		$this->assertTrue( is_object( $new_geo ) );
 
 		// do we have some expected values in that object?
-		$this->assertTrue( isset( $new_geo->term_id, $new_geo->woeid ) );
+		$this->assertTrue( isset( $new_geo->term_id, $new_geo->api_id ) );
 
 		// attempt to create a duplicate geo
 		$dupe_geo = bgeo()->new_geo_by_woeid( 23512019 );

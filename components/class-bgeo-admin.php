@@ -195,13 +195,14 @@ class bGeo_Admin
 				`point` point NOT NULL DEFAULT '',
 				`bounds` geometrycollection NOT NULL DEFAULT '',
 				`area` int(10) unsigned NOT NULL,
-				`woeid` int(12) unsigned DEFAULT NULL,
-				`woe_belongtos` text,
-				`woe_raw` text,
+				`api` char(5) DEFAULT NULL,
+				`api_id` char(32) DEFAULT NULL,
+				`api_raw` text,
+				`belongtos` text,
 				PRIMARY KEY (`term_taxonomy_id`),
 				SPATIAL KEY `point` (`point`),
 				SPATIAL KEY `bounds` (`bounds`),
-				KEY `woeid` (`woeid`)
+				KEY `api_and_api_id` (`api`(1),`api_id`(3))
 			) ENGINE=MyISAM $charset_collate
 		");
 	}
