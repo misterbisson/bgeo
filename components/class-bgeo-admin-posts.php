@@ -431,10 +431,43 @@ class bGeo_Admin_Posts
 			$raw_result->Result = array( $raw_result->Result );
 		}//end if
 
+		$locations = array();
+		foreach ( $raw_result->Result as $raw_location )
+		{
 
-print_r( $raw_result );
+			// attempt to get the term for this yaddr
+			$location = bgeo()->new_geo_by_yaddr( $raw_location );
 
+			if ( ! $location || is_wp_error( $location ) )
+			{
+				continue;
+			}//end if
 
+			// remove the raw woe object to conserve space
+			unset( $location->api_raw );
+
+			$locations[ $location->term_taxonomy_id ] = $location;
+
+			// prefetch the belongto terms
+			// @TODO: should this move to the save_post hook?
+			if ( isset( $location->belongtos ) && is_array( $location->belongtos ) )
+			{
+				foreach ( $location->belongtos as $belongto )
+				{
+					if ( 'woeid' != $belongto->api )
+					{
+						continue;
+					}
+
+					bgeo()->new_geo_by_woeid( $belongto->api_id );
+				}
+			}//end if
+		}
+
+print_r( $locations );
+die;
+
+		return $locations;
 	}//end locationlookup
 
 }//end bGeo_Admin_Posts class

@@ -10,7 +10,7 @@ https://github.com/misterbisson/geoPHP
 
 class bGeo
 {
-	public $version = 2;
+	public $version = 3;
 	public $id_base = 'bgeo';
 	public $table = FALSE;
 	public $plugin_url = FALSE;
@@ -401,8 +401,8 @@ print_r( $geo );
 			$geo->area,
 			sanitize_title_with_dashes( $geo->api ),
 			sanitize_title_with_dashes( $geo->api_id ),
-			maybe_serialize( $geo->belongtos ),
-			maybe_serialize( json_decode( sanitize_text_field( json_encode( $geo->api_raw ) ) ) ) // see http://kitchen.gigaom.com/2014/06/30/quickly-sanitizing-api-feedback/ for how this sanitizes the data without breaking it
+			maybe_serialize( json_decode( sanitize_text_field( json_encode( $geo->api_raw ) ) ) ), // see http://kitchen.gigaom.com/2014/06/30/quickly-sanitizing-api-feedback/ for how this sanitizes the data without breaking it
+			maybe_serialize( $geo->belongtos )
 		);
 
 /*
@@ -524,12 +524,6 @@ print_r( $wpdb );
 		return $this->get_geo_by_ttid( $tt_id );
 	}
 
-
-	public function get_geo_by_woeid( $woeid )
-	{
-		return $this->get_geo_by_api_id( 'woeid', $woeid );
-	}
-
 	public function new_geo_by_woeid( $woeid )
 	{
 
@@ -541,9 +535,10 @@ print_r( $wpdb );
 		}
 
 		// check for an existing geo object for this woeid
-		if ( ! is_wp_error( $this->get_geo_by_api_id( 'woeid', $woeid ) ) )
+		$existing = $this->get_geo_by_api_id( 'woeid', $woeid );
+		if ( ! is_wp_error( $existing ) )
 		{
-			return $this->get_geo_by_api_id( 'woeid', $woeid );
+			return $existing;
 		}
 
 		// get all details for this WOEID
@@ -561,28 +556,7 @@ print_r( $wpdb );
 		$geo->api = 'woeid';
 		$geo->api_raw = $api_raw->place;
 		$geo->api_id = absint( $api_raw->place->woeid );
-
-		// get the belongto woeids
-		$query = 'SELECT woeid FROM geo.places.belongtos WHERE member_woeid IN (SELECT woeid FROM geo.places WHERE woeid IN ('. $woeid .') )';
-		$belongtos = bgeo()->yahoo()->yql( $query );
-
-		// extract any results
-		$geo->belongtos= array();
-		if ( isset( $belongtos->place ) )
-		{
-			if ( ! is_array( $belongtos->place ) )
-			{
-				$belongtos->place = array( $belongtos->place );
-			}
-
-			foreach ( $belongtos->place as $temp )
-			{
-				$geo->belongtos[] = (object) array(
-					'api' => 'woeid',
-					'api_id' => $temp->woeid,
-				);
-			}
-		}
+		$geo->belongtos = $this->get_belongtos( 'woeid', $woeid );
 
 		// whatsoever shall we name this geo?
 		$term_name = wp_kses( $geo->api_raw->name, array() );
@@ -628,7 +602,7 @@ print_r( $wpdb );
 		$term_slug = (int) $geo->api_raw->woeid . '-' . sanitize_title_with_dashes( str_replace( array( '/', '_' ), ' ', $term_name ) );
 		if( ! $term = get_term_by( 'slug', $term_slug, $this->geo_taxonomy_name ) )
 		{
-			$new_term = (object) wp_insert_term( $term_name, $this->geo_taxonomy_name, array( 'slug' => $term_slug , 'description' => implode( ', ', $description_parts ) ) );
+			$new_term = (object) wp_insert_term( $term_name, $this->geo_taxonomy_name, array( 'slug' => $term_slug, 'description' => implode( ', ', $description_parts ) ) );
 			$term = get_term( $new_term->term_id, $this->geo_taxonomy_name );
 		}
 
@@ -652,19 +626,122 @@ print_r( $wpdb );
 		return $this->get_geo( $term->term_id, $term->taxonomy );
 	}
 
-	public function get_geo_by_yaddrh( $woeid )
+	public function new_geo_by_yaddr( $yaddr_object )
 	{
-		global $wpdb;
-		$tt_id = $wpdb->get_var( $wpdb->prepare( "SELECT term_taxonomy_id FROM $this->table WHERE woeid = %d LIMIT 1", absint( $woeid ) ) );
 
-		if( ! $tt_id )
+		// sanity check the yaddr
+		if ( ! is_object( $yaddr_object ) )
 		{
-			$error = new WP_Error( 'invalid_woeid', 'Invalid WOEID' );
+			$error = new WP_Error( 'invalid_yaddr', 'Invalid Yahoo address object' );
 			return $error;
 		}
-		return $this->get_geo_by_ttid( $tt_id );
+
+		// the WOEID is required
+		if ( empty( $yaddr_object->woeid ) )
+		{
+			$error = new WP_Error( 'invalid_yaddr', 'No WOEID present in the Yahoo address object' );
+			return $error;
+		}
+
+		// if the address match isn't good enough to get a hash, then it's only as specific as the WOEID
+		if ( empty( $yaddr_object->hash ) )
+		{
+			return $this->new_geo_by_woeid( $yaddr_object->woeid );
+		}
+
+		// check for an existing geo object for this hash
+		$existing = $this->get_geo_by_api_id( 'yaddr', $yaddr_object->hash );
+		if ( ! is_wp_error( $existing ) )
+		{
+			return $existing;
+		}
+
+		$geo = (object) array();
+		$geo->api = 'yaddr';
+		$geo->api_raw = $yaddr_object;
+		$geo->api_id = $geo->api_raw->hash;
+		$geo->belongtos = $this->get_belongtos( 'woeid', $geo->api_raw->woeid );
+
+		// whatsoever shall we name this geo?
+		$name_parts = array_intersect_key( (array) $geo->api_raw, array(
+			'line1' => TRUE,
+			'line2' => TRUE,
+			'line3' => TRUE,
+			'line4' => TRUE,
+		) );
+		$term_name = wp_kses( implode( ' ', $name_parts ), array() );
+
+		// get or create a term for this geo
+		$term_slug = (int) $geo->api_raw->woeid . '-' . sanitize_title_with_dashes( str_replace( array( '/', '_' ), ' ', $term_name ) );
+		if( ! $term = get_term_by( 'slug', $term_slug, $this->geo_taxonomy_name ) )
+		{
+			$new_term = (object) wp_insert_term( $term_name, $this->geo_taxonomy_name, array( 'slug' => $term_slug ) );
+			$term = get_term( $new_term->term_id, $this->geo_taxonomy_name );
+		}
+
+		// did we get a term?
+		if ( ! isset( $term->term_taxonomy_id ) )
+		{
+			$error = new WP_Error( 'no_term', 'Either couldn\'t find or couldn\'t create a term for this Yahoo address object' );
+			return $error;
+		}
+
+		// get the centroid for this geo
+		$point = $this->new_geometry( '{ "type": "Point", "coordinates": [' . $geo->api_raw->longitude . ', ' . $geo->api_raw->offsetlat . '] }', 'json' );
+		$geo->point_lat = $point->getY();
+		$geo->point_lon = $point->getX();
+
+		// get the bounding box for this geo
+		$bounds = $this->new_geometry( '{ "type": "LineString", "coordinates": [ [' . ( $geo->api_raw->offsetlon + 0.0001 ) . ', ' . ( $geo->api_raw->offsetlat + 0.0001 ) . '], [' . ( $geo->api_raw->offsetlon - 0.0001 ) . ', ' . ( $geo->api_raw->offsetlat - 0.0001 ) . '] ]}', 'json' );
+		$geo->bounds = $bounds->envelope()->out( 'json' );
+
+		$this->update_geo( $term->term_id, $term->taxonomy, $geo );
+		return $this->get_geo( $term->term_id, $term->taxonomy );
 	}
 
+	public function get_belongtos( $api, $api_id )
+	{
+
+		// check for an existing geo object for this item
+		$existing = $this->get_geo_by_api_id( $api, $api_id );
+		if ( ! is_wp_error( $existing ) )
+		{
+			return $existing->belongtos;
+		}
+
+		// we can only look up belongtos by WOEID
+		if ( 'woeid' != $api )
+		{
+			return array();
+		}
+
+		// get the belongto woeids
+		$query = 'SELECT woeid FROM geo.places.belongtos WHERE member_woeid IN (SELECT woeid FROM geo.places WHERE woeid IN ('. $api_id .') )';
+		$api_raw = bgeo()->yahoo()->yql( $query );
+
+		// did we get anything?
+		if ( ! isset( $api_raw->place ) )
+		{
+			return array();
+		}
+
+		// extract any results
+		$belongtos = array();
+		if ( ! is_array( $api_raw->place ) )
+		{
+			$api_raw->place = array( $belongtos->place );
+		}
+
+		foreach ( $api_raw->place as $temp )
+		{
+			$belongtos[] = (object) array(
+				'api' => 'woeid',
+				'api_id' => $temp->woeid,
+			);
+		}
+
+		return $belongtos;
+	}
 
 	public function register_taxonomy()
 	{

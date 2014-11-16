@@ -67,7 +67,7 @@ class bGeo_Test extends WP_UnitTestCase
 
 	/**
 	 * create and get terms by woeid
-	 * tests bgeo()->new_geo_by_woeid(), bgeo()->get_geo_by_woeid(), and bgeo()->get_geo_by_ttid()
+	 * tests bgeo()->new_geo_by_woeid(), bgeo()->get_geo_by_api_id(), and bgeo()->get_geo_by_ttid()
 	 */
 	public function test_terms_by_woeid()
 	{
@@ -91,7 +91,7 @@ class bGeo_Test extends WP_UnitTestCase
 		$this->assertTrue( $new_geo == $dupe_geo );
 
 		// get the term we created
-		$previous_term = bgeo()->get_geo_by_woeid( 23512019 );
+		$previous_term = bgeo()->get_geo_by_api_id( 'woeid', 23512019 );
 		$this->assertTrue( is_object( $previous_term ) );
 
 		// it's not an error, right?
