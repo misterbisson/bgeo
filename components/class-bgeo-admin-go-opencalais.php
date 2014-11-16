@@ -3,7 +3,7 @@
 This class includes code to integrate with https://github.com/GigaOM/go-opencalais.
 */
 
-class bGeo_GO_OpenCalais extends bGeo
+class bGeo_Admin_GO_OpenCalais
 {
 
 	public $entity_types = array(
@@ -16,64 +16,61 @@ class bGeo_GO_OpenCalais extends bGeo
 
 	public function __construct()
 	{
-		add_filter( 'go_oc_response', array( $this, 'filter_response_add_terms' ), 2 );
+		add_filter( 'bgeo_locationsfromtext', array( $this, 'bgeo_locationsfromtext' ), 2, 3 );
 	}
 
-	public function filter_response_add_terms( $response )
+	public function bgeo_locationsfromtext( $locations, $post_id, $text )
 	{
-		foreach ( $response as $k => $v )
+
+		// construct a post object as required for the enrich class
+		$post = clone get_post( $post_id );
+		$post->post_content = $text;
+
+		// instantiate the enrich class and execute
+		$enrich_obj = go_opencalais()->admin()->enrich( $post );
+		$enrich_obj->enrich();
+
+echo '<h2>' . __LINE__ . '</h2>';
+
+//print_r( $enrich_obj->response );
+
+		// did we get a result from opencalais?
+		if( ! is_array( $enrich_obj->response ) )
 		{
-			if ( isset( $v->_type, $v->name, $this->entity_types[ $v->_type ] ) )
+			return $locations;
+		}
+
+		// extract the raw locations from the API output
+		$opencalais_locations = array();
+		foreach ( $enrich_obj->response as $k => $v )
+		{
+			if ( ! isset( $v->_type, $v->name, $v->resolutions, $this->entity_types[ $v->_type ] ) )
 			{
-//print_r( $v );
+				continue;
+			}
 
-				switch ( $v->_type )
-				{
-					case 'City':
-
-						// don't bother with City entities without resolutions
-						if ( ! isset( $v->resolutions ) )
-						{
-							unset( $response[ $k ] );
-							continue( 2 );
-						}
-
-						$response[ $k ]->name = $v->resolutions[0]->shortname . ' ('. ( 'United States' == $v->resolutions[0]->containedbycountry ? $v->resolutions[0]->containedbystate : $v->resolutions[0]->containedbycountry ). ')';
-						break;
-
-					case 'ProvinceOrState':
-
-						// don't bother with ProvinceOrState entities without resolutions
-						if ( ! isset( $v->resolutions ) )
-						{
-							unset( $response[ $k ] );
-							continue( 2 );
-						}
-
-						$response[ $k ]->name = $v->resolutions[0]->shortname . ' ('. $v->resolutions[0]->containedbycountry . ')';
-						break;
-
-					case 'Country':
-						break;
-
-					case 'Continent':
-						break;
-
-					case 'Region':
-						break;
-
-					default:
-						break;
-
-				}
-
-//print_r( $v );
+			foreach ( $v->resolutions as $resolution )
+			{
+				$opencalais_locations[] = $resolution;
 			}
 		}
 
-//print_r( $response );
-//die;
-		return $response;
-	}//end filter_response_add_terms
+		// go no further if we have no locations to process
+		if( empty( $opencalais_locations ) )
+		{
+			return $locations;
+		}
 
-}//end bGeo_GO_OpenCalais class
+
+print_r( $opencalais_locations );
+
+
+		die;
+
+		print_r( $locations );
+		print_r( $post_id );
+		print_r( $text );
+		die;
+	}
+
+}//end bGeo_Admin_GO_OpenCalais class

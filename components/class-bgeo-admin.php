@@ -26,7 +26,6 @@ class bGeo_Admin
 
 		$this->terms();
 		$this->posts();
-		$this->go_opencalais();
 	}//end __construct
 
 	// an accessor for the posts object
@@ -65,7 +64,7 @@ class bGeo_Admin
 		if ( ! $this->go_opencalais )
 		{
 			require_once __DIR__ . '/class-bgeo-admin-go-opencalais.php';
-			$this->go_opencalais = new bGeo_GO_OpenCalais();
+			$this->go_opencalais = new bGeo_Admin_GO_OpenCalais();
 		}
 
 		return $this->go_opencalais;
@@ -77,6 +76,7 @@ class bGeo_Admin
 	public function admin_init()
 	{
 		$this->upgrade();
+		$this->go_opencalais();
 
 		// common to both terms and posts
 		add_action( 'admin_enqueue_scripts', array( $this, 'admin_enqueue_scripts' ) );
