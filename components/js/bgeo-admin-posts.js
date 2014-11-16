@@ -35,7 +35,21 @@
 		}
 
 		this.getSuggestions = function() {
-			var url = bgeo.endpoint + '&post_id=' + bgeo.post_id + '&nonce=' + bgeo.nonce;
+			var url = bgeo.endpoint + 'locationsfromtext&post_id=' + bgeo.post_id + '&nonce=' + bgeo.nonce;
+			$http.get(url).success(function (data) {
+				// sanity check
+				firstKey = Object.keys(data)[0];
+				if(undefined == data[firstKey])
+				{
+					return;
+				}
+
+				api.suggestions = data;
+			});
+		}
+
+		this.searchLocations = function() {
+			var url = bgeo.endpoint + 'locationlookup&query=' + this.searchText + '&nonce=' + bgeo.nonce;
 			$http.get(url).success(function (data) {
 				// sanity check
 				firstKey = Object.keys(data)[0];

@@ -78,7 +78,7 @@ class bGeo_Admin_Posts
 				$meta = $this->get_post_meta( $post->ID );
 
 				$localized_values = array(
-					'endpoint'        => admin_url( '/admin-ajax.php?action=bgeo-locationsfromtext' ),
+					'endpoint'        => admin_url( '/admin-ajax.php?action=bgeo-' ),
 					'nonce'           => wp_create_nonce( 'bgeo' ),
 					'post_id'         => $post->ID,
 					'geo_suggestions' => (object) array(),
