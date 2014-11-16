@@ -320,6 +320,13 @@ class bGeo_Admin_Posts
 			);
 		}//end if
 
+		return apply_filters(
+			'bgeo_locationsfromtext',
+			$this->_locationsfromtext( $text ),
+			$post->ID,
+			$text
+		);
+
 		return $this->_locationsfromtext( $text );
 	}//end locationsfromtext
 

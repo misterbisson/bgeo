@@ -8,6 +8,7 @@ class bGeo_Admin
 	private $bgeo = NULL;
 	public $posts = NULL;
 	public $terms = NULL;
+	public $go_opencalais = NULL;
 	public $script_config = NULL;
 
 	private $dependencies = array(
@@ -25,9 +26,10 @@ class bGeo_Admin
 
 		$this->terms();
 		$this->posts();
+		$this->go_opencalais();
 	}//end __construct
 
-	// a accessor for the posts object
+	// an accessor for the posts object
 	public function posts()
 	{
 		if ( ! $this->posts )
@@ -39,7 +41,7 @@ class bGeo_Admin
 		return $this->posts;
 	} // END posts
 
-	// a accessor for the terms object
+	// an accessor for the terms object
 	public function terms()
 	{
 		if ( ! $this->terms )
@@ -50,6 +52,24 @@ class bGeo_Admin
 
 		return $this->terms;
 	} // END terms
+
+	// an accessor for the go_opencalais integration object
+	public function go_opencalais()
+	{
+		// sanity check to make sure the go-opencalais plugin is loaded
+		if ( ! function_exists( 'go_opencalais' ) )
+		{
+			return FALSE;
+		}
+
+		if ( ! $this->go_opencalais )
+		{
+			require_once __DIR__ . '/class-bgeo-admin-go-opencalais.php';
+			$this->go_opencalais = new bGeo_GO_OpenCalais();
+		}
+
+		return $this->go_opencalais;
+	} // END go_opencalais
 
 	/**
 	 * Start things up!
