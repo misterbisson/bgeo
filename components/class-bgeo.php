@@ -169,8 +169,36 @@ class bGeo
 	}
 
 	// get a geo record
-	public function get_geo( $term_id, $taxonomy )
+	public function get_geo_by( $field, $value, $taxonomy = NULL )
 	{
+
+		if ( ! $taxonomy )
+		{
+			$taxonomy = $this->geo_taxonomy_name;
+		}
+
+		$term = get_term_by( $field, $value, $taxonomy );
+
+		if (
+			! is_object( $term ) ||
+			! isset( $term->term_id )
+		)
+		{
+			return FALSE;
+		}
+
+		return $this->get_geo( $term->term_id, $term->taxonomy );
+	}
+
+	// get a geo record
+	public function get_geo( $term_id, $taxonomy = NULL )
+	{
+
+		if ( ! $taxonomy )
+		{
+			$taxonomy = $this->geo_taxonomy_name;
+		}
+
 		$term = get_term( $term_id, $taxonomy );
 
 		if ( ! isset( $term->term_taxonomy_id ) )

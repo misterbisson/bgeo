@@ -64,7 +64,7 @@ class bGeo_Admin
 		if ( ! $this->go_opencalais )
 		{
 			require_once __DIR__ . '/class-bgeo-admin-go-opencalais.php';
-			$this->go_opencalais = new bGeo_Admin_GO_OpenCalais();
+			$this->go_opencalais = new bGeo_Admin_GO_OpenCalais( $this->bgeo );
 		}
 
 		return $this->go_opencalais;

@@ -320,14 +320,16 @@ class bGeo_Admin_Posts
 			);
 		}//end if
 
-		return apply_filters(
+		$locations = apply_filters(
 			'bgeo_locationsfromtext',
 			$this->_locationsfromtext( $text ),
 			$post->ID,
 			$text
 		);
 
-		return $this->_locationsfromtext( $text );
+		usort( $locations, array( $this, 'sort_by_relevance' ) );
+
+		return $locations;
 	}//end locationsfromtext
 
 	public function _locationsfromtext( $text = NULL )
@@ -370,6 +372,8 @@ class bGeo_Admin_Posts
 			// remove the raw woe object to conserve space
 			unset( $location->api_raw );
 
+			$location->relevance = 1;
+
 			$locations[ $location->term_taxonomy_id ] = $location;
 
 			// prefetch the belongto terms
@@ -390,6 +394,16 @@ class bGeo_Admin_Posts
 
 		return $locations;
 	}//end _locationsfromtext
+
+	public function sort_by_relevance( $a, $b )
+	{
+		if( $a->relevance == $b->relevance )
+		{
+			return 0;
+		}
+
+		return $a->relevance < $b->relevance ? 1 : -1;
+	}
 
 	public function ajax_locationlookup()
 	{
