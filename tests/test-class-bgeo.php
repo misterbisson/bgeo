@@ -74,8 +74,8 @@ class bGeo_Test extends WP_UnitTestCase
 		// create our table
 		bgeo()->admin()->upgrade();
 
-		// attempt to create a geo with a bogus woeid
-		$this->assertTrue( is_wp_error( bgeo()->new_geo_by_woeid( 'asdf' ) ) );
+		// attempt to create a geo with a bogus address
+		$this->assertTrue( is_wp_error( bgeo()->new_geo_by_yaddr( (object) array() ) ) );
 
 		// create a geo with a known good woeid
 		$new_geo = bgeo()->new_geo_by_woeid( 23512019 );
@@ -101,6 +101,76 @@ class bGeo_Test extends WP_UnitTestCase
 		$this->assertTrue( isset( $previous_term->term_taxonomy_id ) );
 
 	}//end test_terms_by_woeid
+
+	/**
+	 * create and get terms by yaddr
+	 * tests bgeo()->new_geo_by_yaddr(), bgeo()->get_geo_by_api_id(), and bgeo()->get_geo_by_ttid()
+	 */
+	public function test_terms_by_yaddr()
+	{
+		$yaddr = (object) array(
+			'quality' => 85,
+			'addressMatchType' => 'POINT_ADDRESS',
+			'latitude' => 37.798,
+			'longitude' => -122.40567,
+			'offsetlat' => 37.798191,
+			'offsetlon' => -122.405693,
+			'radius' => 400,
+			'name' => NULL,
+			'line1' => '504 Broadway',
+			'line2' => 'San Francisco, CA 94133-4507',
+			'line3' => NULL,
+			'line4' => 'United States',
+			'house' => '504',
+			'street' => 'Broadway',
+			'xstreet' => NULL,
+			'unittype' => NULL,
+			'unit' => NULL,
+			'postal' => '94133-4507',
+			'neighborhood' => 'Telegraph Hill',
+			'city' => 'San Francisco',
+			'county' => 'San Francisco County',
+			'state' => 'California',
+			'country' => 'United States',
+			'countrycode' => 'US',
+			'statecode' => 'CA',
+			'countycode' => NULL,
+			'uzip' => '94133',
+			'hash' => '30110758956D4BAF',
+			'woeid' => 12797183,
+			'woetype' => 11
+		);
+
+		// create our table
+		bgeo()->admin()->upgrade();
+
+		// attempt to create a geo with a bogus woeid
+		$this->assertTrue( is_wp_error( bgeo()->new_geo_by_woeid( 'asdf' ) ) );
+
+		// create a geo with a known good address
+		$new_geo = bgeo()->new_geo_by_yaddr( $yaddr );
+
+		// did we get an object back?
+		$this->assertTrue( is_object( $new_geo ) );
+
+		// do we have some expected values in that object?
+		$this->assertTrue( isset( $new_geo->term_id, $new_geo->api_id ) );
+
+		// attempt to create a duplicate geo
+		$dupe_geo = bgeo()->new_geo_by_yaddr( $yaddr );
+		$this->assertTrue( $new_geo == $dupe_geo );
+
+		// get the term we created
+		$previous_term = bgeo()->get_geo_by_api_id( 'yaddr', '30110758956d4baf' );
+		$this->assertTrue( is_object( $previous_term ) );
+
+		// it's not an error, right?
+		$this->assertFalse( is_wp_error( $previous_term ) );
+
+		// we've got an expected value inside it, right?
+		$this->assertTrue( isset( $previous_term->term_taxonomy_id ) );
+
+	}//end test_terms_by_yaddr
 
 
 }//end class

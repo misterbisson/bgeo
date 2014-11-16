@@ -460,7 +460,7 @@ class bGeo_Admin_Posts
 			}//end if
 
 			// remove the raw woe object to conserve space
-			unset( $location->api_raw );
+//			unset( $location->api_raw );
 
 			$locations[ $location->term_taxonomy_id ] = $location;
 
