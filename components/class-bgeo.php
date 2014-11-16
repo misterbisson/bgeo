@@ -216,7 +216,7 @@ class bGeo
 
 		// convert the WKT string into geoJSON
 		$bounds = $this->new_geometry( $geo->bounds, 'wkt' );
-		if ( ! is_object( $bounds ))
+		if ( ! is_object( $bounds ) )
 		{
 			return FALSE;
 		}
@@ -254,6 +254,7 @@ class bGeo
 echo '<pre>';
 print_r( $geo );
 */
+
 		// merge this with the term object and return
 		return (object) array_merge( (array) $term, (array) $geo );
 
@@ -340,7 +341,7 @@ print_r( $geo );
 		}
 
 		// validate that we have both point and bounds values
-		if ( empty( $geo->point_lat ) || empty( $geo->point_lon ) || empty( $geo->bounds ))
+		if ( ! isset( $geo->point_lat, $geo->point_lon, $geo->bounds ))
 		{
 			return FALSE;
 		}
@@ -425,6 +426,7 @@ print_r( $wpdb );
 			$error = new WP_Error( 'update_failed', 'Failed to insert or update database row: ' . $wpdb->last_error );
 			return $error;
 		}
+
 		return $this->get_geo( $term_id, $taxonomy );
 
 	}//end update_geo
@@ -623,6 +625,7 @@ print_r( $wpdb );
 		$geo->bounds = $bounds->envelope()->out( 'json' );
 
 		$this->update_geo( $term->term_id, $term->taxonomy, $geo );
+
 		return $this->get_geo( $term->term_id, $term->taxonomy );
 	}
 
@@ -675,7 +678,7 @@ print_r( $wpdb );
 		$term_slug = (int) $geo->api_raw->woeid . '-' . sanitize_title_with_dashes( str_replace( array( '/', '_' ), ' ', $term_name ) );
 		if( ! $term = get_term_by( 'slug', $term_slug, $this->geo_taxonomy_name ) )
 		{
-			$new_term = (object) wp_insert_term( $term_name, $this->geo_taxonomy_name, array( 'slug' => $term_slug ) );
+			$new_term = (object) wp_insert_term( $term_name, $this->geo_taxonomy_name, array( 'slug' => $term_slug, 'description' => 'address, ' . $geo->api_raw->country ) );
 			$term = get_term( $new_term->term_id, $this->geo_taxonomy_name );
 		}
 

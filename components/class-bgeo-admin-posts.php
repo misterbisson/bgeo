@@ -320,6 +320,18 @@ class bGeo_Admin_Posts
 			);
 		}//end if
 
+		return $this->_locationsfromtext( $text );
+	}//end locationsfromtext
+
+	public function _locationsfromtext( $text = NULL )
+	{
+
+		// We need at least 3 chars to call this api
+		if ( 3 > strlen( $text ) )
+		{
+			return FALSE;
+		}//end if
+
 		// check the API
 		// API results are cached in the underlying method
 		// @TODO: reorder the final sanitization and move it out of the following line
@@ -370,7 +382,7 @@ class bGeo_Admin_Posts
 		}
 
 		return $locations;
-	}//end locationsfromtext
+	}//end _locationsfromtext
 
 	public function ajax_locationlookup()
 	{
@@ -416,7 +428,7 @@ class bGeo_Admin_Posts
 			return FALSE;
 		}//end if
 
-		// check the API
+		// check the placefinder API
 		// API results are cached in the underlying method
 		$query = 'SELECT * FROM geo.placefinder where text = "' . str_replace( '"', '\'', $query ) . '"';
 		$raw_result = bgeo()->yahoo()->yql( $query );
@@ -431,7 +443,11 @@ class bGeo_Admin_Posts
 			$raw_result->Result = array( $raw_result->Result );
 		}//end if
 
-		$locations = array();
+		// get locations from the placemaker api (the two APIs are unioned below
+		// this API returns better results for colloquial queries, like "west coast
+		$locations = (array) $this->_locationsfromtext( $text );
+
+		// iterate through placefinder API results and add those to the return set
 		foreach ( $raw_result->Result as $raw_location )
 		{
 
@@ -464,10 +480,7 @@ class bGeo_Admin_Posts
 			}//end if
 		}
 
-print_r( $locations );
-die;
-
-		return $locations;
+		return array_filter( $locations );
 	}//end locationlookup
 
 }//end bGeo_Admin_Posts class
