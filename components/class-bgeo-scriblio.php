@@ -1,6 +1,6 @@
 <?php
 
-class Facet_Taxonomy implements Facet
+class bGeo_Scriblio implements Facet
 {
 
 	public $version = 1;
@@ -12,11 +12,10 @@ class Facet_Taxonomy implements Facet
 		$this->args = $args;
 		$this->facets = $facets_object;
 
+		// @TODO: remove all mention of these, this class is specific to geos
 		$this->taxonomy = $args['taxonomy'] ? $args['taxonomy'] : $this->name;
-
 		$this->facets->_tax_to_facet[ $this->taxonomy ] = $this->name;
 		$this->facets->_facet_to_tax[ $this->name ] = $this->taxonomy;
-
 		$taxonomy = get_taxonomy( $this->taxonomy );
 		$this->label = $taxonomy->label;
 		$this->labels = $taxonomy->labels;
@@ -27,14 +26,12 @@ class Facet_Taxonomy implements Facet
 
 	function register_query_var()
 	{
-		global $wp;
 
+		// @TODO: the query var is known from the registered taxonomy qv
 		if ( TRUE === $this->query_var )
+		{
 			$this->query_var = $this->name;
-
-		// @ TODO: check to see if the query var is registered before adding it again
-		$this->query_var = sanitize_title_with_dashes( $this->query_var );
-		$wp->add_query_var( $this->query_var );
+		}
 
 		return $this->query_var;
 	}
@@ -56,10 +53,12 @@ class Facet_Taxonomy implements Facet
 
 	function get_terms_in_corpus()
 	{
-		if( isset( $this->terms_in_corpus ))
+		if ( isset( $this->terms_in_corpus ) )
+		{
 			return $this->terms_in_corpus;
+		}
 
-		scriblio()->timer( 'facet_taxonomy::get_terms_in_corpus' );
+		scriblio()->timer( 'bgeo_scriblio::get_terms_in_corpus' );
 		$timer_notes = 'from cache';
 
 		if( ! $this->terms_in_corpus = wp_cache_get( 'terms-in-corpus-'. $this->taxonomy , 'scrib-facet-taxonomy' ))
@@ -86,7 +85,7 @@ class Facet_Taxonomy implements Facet
 			wp_cache_set( 'terms-in-corpus-'. $this->taxonomy , $this->terms_in_corpus, 'scrib-facet-taxonomy', $this->ttl );
 		}
 
-		scriblio()->timer( 'facet_taxonomy::get_terms_in_corpus', $timer_notes );
+		scriblio()->timer( 'bgeo_scriblio::get_terms_in_corpus', $timer_notes );
 
 		return $this->terms_in_corpus;
 	}
@@ -106,7 +105,7 @@ class Facet_Taxonomy implements Facet
 			return array();
 		}//end if
 
-		scriblio()->timer( 'facet_taxonomy::get_terms_in_found_set' );
+		scriblio()->timer( 'bgeo_scriblio::get_terms_in_found_set' );
 		$timer_notes = 'from cache';
 
 		$cache_key = md5( serialize( $matching_post_ids ) ) . $this->version;
@@ -122,13 +121,13 @@ class Facet_Taxonomy implements Facet
 				INNER JOIN $wpdb->terms b ON a.term_id = b.term_id
 				WHERE c.object_id IN (". implode( ',' , $matching_post_ids ) .")
 				GROUP BY c.term_taxonomy_id ORDER BY count DESC LIMIT 2000
-				/* generated in Facet_Taxonomy::get_terms_in_found_set() */";
+				/* generated in bgeo_scriblio::get_terms_in_found_set() */";
 
 			$terms = $wpdb->get_results( $facets_query );
 
-			scriblio()->timer( 'facet_taxonomy::get_terms_in_found_set::scriblio_facet_taxonomy_terms' );
+			scriblio()->timer( 'bgeo_scriblio::get_terms_in_found_set::scriblio_facet_taxonomy_terms' );
 			$terms = apply_filters( 'scriblio_facet_taxonomy_terms', $terms );
-			scriblio()->timer( 'facet_taxonomy::get_terms_in_found_set::scriblio_facet_taxonomy_terms', count( $terms ) . ' terms' );
+			scriblio()->timer( 'bgeo_scriblio::get_terms_in_found_set::scriblio_facet_taxonomy_terms', count( $terms ) . ' terms' );
 
 			$this->facets->_matching_tax_facets = array();
 			foreach( $terms as $term )
@@ -148,7 +147,7 @@ class Facet_Taxonomy implements Facet
 			wp_cache_set( $cache_key, $this->facets->_matching_tax_facets , 'scrib-facet-taxonomy', $this->ttl );
 		}
 
-		scriblio()->timer( 'facet_taxonomy::get_terms_in_found_set', $timer_notes );
+		scriblio()->timer( 'bgeo_scriblio::get_terms_in_found_set', $timer_notes );
 
 		if( ! isset( $this->facets->_matching_tax_facets[ $this->name ] ) || ! is_array( $this->facets->_matching_tax_facets[ $this->name ] ) )
 		{
@@ -168,7 +167,7 @@ class Facet_Taxonomy implements Facet
 		if( ! $post_id )
 			return FALSE;
 
-		scriblio()->timer( 'facet_taxonomy::get_terms_in_post' );
+		scriblio()->timer( 'bgeo_scriblio::get_terms_in_post' );
 
 		$terms = wp_get_object_terms( $post_id , $this->taxonomy );
 		$terms = apply_filters( 'scriblio_facet_taxonomy_terms', $terms );
@@ -187,7 +186,7 @@ class Facet_Taxonomy implements Facet
 			);
 		}
 
-		scriblio()->timer( 'facet_taxonomy::get_terms_in_post' );
+		scriblio()->timer( 'bgeo_scriblio::get_terms_in_post' );
 
 		return $terms_in_post;
 	}
@@ -238,20 +237,5 @@ class Facet_Taxonomy implements Facet
 
 		$termlink = apply_filters( 'scriblio_facet_taxonomy_permalink', $termlink, $terms, $this->taxonomy );
 		return $termlink;
-	}
-
-
-	// WP sometimes fails to update this count during regular operations, so this fixes that
-	// it's not actually called anywhere, though
-	function _update_term_counts()
-	{
-		$wpdb->get_results('
-			UPDATE '. $wpdb->term_taxonomy .' tt
-			SET tt.count = (
-				SELECT COUNT(*)
-				FROM '. $wpdb->term_relationships .' tr
-				WHERE tr.term_taxonomy_id = tt.term_taxonomy_id
-			) /* generated in Facet_Taxonomy::_update_term_counts() */'
-		);
 	}
 }
