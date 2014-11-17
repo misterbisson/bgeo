@@ -42,8 +42,9 @@ class bGeo_Admin_Postmeta
 	// @TODO: this method is incomplete
 	public function update_post_meta( $post_id, $meta )
 	{
-		wp_set_object_terms( $post_id, (int) $meta->geo->term_id, $meta->geo->taxonomy, TRUE );
-		return update_post_meta( $post_id, $this->id_base, $meta );
+		$term_ids = $this->bgeo->admin->posts()->get_term_ids_from_geo( $meta->geo );
+		wp_set_object_terms( $post_id, $term_ids, $meta->geo->taxonomy, TRUE );
+		update_post_meta( $post_id, $this->id_base, $meta );
 	} // END update_post_meta
 
 	public function locationlookup( $text )

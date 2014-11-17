@@ -778,7 +778,7 @@ print_r( $wpdb );
 		}
 
 		// get the belongto woeids
-		$query = 'SELECT woeid FROM geo.places.belongtos WHERE member_woeid IN (SELECT woeid FROM geo.places WHERE woeid IN ('. $api_id .') )';
+		$query = 'SELECT woeid,placeTypeName FROM geo.places.belongtos WHERE member_woeid IN ('. $api_id .') AND placeTypeName NOT IN ( "Zone", "Time Zone" )';
 		$api_raw = bgeo()->yahoo()->yql( $query );
 
 		// did we get anything?

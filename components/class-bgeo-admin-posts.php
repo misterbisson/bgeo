@@ -199,7 +199,7 @@ class bGeo_Admin_Posts
 		{
 			foreach ( $meta['term'] as $slug => $unused )
 			{
-				$geo = $this->geo->get_geo_by( 'slug', $slug );
+				$geo = $this->bgeo->get_geo_by( 'slug', $slug );
 				$primary_geos[] = $geo;
 				$term_ids = array_merge( $term_ids, $this->get_term_ids_from_geo( $geo ) );
 			}

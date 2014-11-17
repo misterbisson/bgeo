@@ -189,10 +189,7 @@ class bGeo_Admin_GO_OpenCalais
 			'show_ui' => TRUE,
 			'show_admin_column' => TRUE,
 			'query_var' => TRUE,
-			'rewrite' => array(
-				'slug' => 'geography',
-				'with_front' => FALSE,
-			),
+			'rewrite' => FALSE,
 		) );
 
 	} // END register_taxonomy
