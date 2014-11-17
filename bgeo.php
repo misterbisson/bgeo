@@ -2,7 +2,7 @@
 /*
 Plugin Name: bGeo
 Plugin URI: https://github.com/misterbisson/bgeo
-Description: 
+Description: @TODO: this needs development
 Version: 0.1
 Author: Casey Bisson
 Author URI: http://maisonbisson.com/

@@ -1,229 +1,277 @@
 <?php
 /*
-This class includes the admin UI components and metaboxes, and the supporting methods they require.
-*/
+ * This class provides a handful of convenience methods used by other code that only runs in the admin context,
+ * as well as object accessors for specific components, such as terms, posts, and postmeta classes.
+ */
 
 class bGeo_Admin
 {
-	private $bgeo = NULL;
+	private $bgeo    = NULL;
+	public $postmeta = NULL;
+	public $posts    = NULL;
+	public $terms    = NULL;
+	public $go_opencalais = NULL;
+	public $script_config = NULL;
 
+	private $dependencies = array(
+		'go-ui' => 'https://github.com/GigaOM/go-ui',
+	);
+	private $missing_dependencies = array();
+
+	/**
+	 * constructor
+	 */
 	public function __construct( $bgeo )
 	{
 		$this->bgeo = $bgeo;
+		add_action( 'admin_init', array( $this, 'admin_init' ) );
 
-		add_action( 'admin_init', array( $this , 'admin_init' ) );
+		$this->postmeta();
+		$this->posts();
+		$this->terms();
+	}//end __construct
 
-		add_action( 'created_term', array( $this , 'edited_term' ), 5, 3 );
-		add_action( 'edited_term', array( $this , 'edited_term' ), 5, 3 );
-		add_action( 'delete_term', array( $this , 'delete_term' ), 5, 4 );
-	}
-
-	public function admin_init()
+	/**
+	 * Function description
+	 */
+	// an accessor for the posts object
+	public function posts()
 	{
-		// add any JS or CSS for the needed for the dashboard
-		add_action( 'admin_enqueue_scripts', array( $this , 'admin_enqueue_scripts' ) );
-
-		$this->upgrade();
-
-		//add the geo metabox to each of the taxonomies we're registered against
-		foreach ( $this->bgeo->options()->taxonomies as $taxonomy )
+		if ( ! $this->posts )
 		{
-			add_action( $taxonomy . '_edit_form_fields', array( $this, 'term_metabox' ), 5, 2 );
+			require_once __DIR__ . '/class-bgeo-admin-posts.php';
+			$this->posts = new bGeo_Admin_Posts( $this->bgeo );
 		}
 
-		//add the geo metabox to the posts
-		// add_action( 'add_meta_boxes', array( $this, 'post_metaboxes' ), 10, 1 );
+		return $this->posts;
+	} // END posts
+
+	/**
+	 * Function description
+	 */
+	// an accessor for the postmeta object
+	public function postmeta()
+	{
+		if ( ! $this->postmeta )
+		{
+			require_once __DIR__ . '/class-bgeo-admin-postmeta.php';
+			$this->postmeta = new bGeo_Admin_Postmeta( $this->bgeo );
+		}
+
+		return $this->postmeta;
+	} // END postmeta
+
+	/**
+	 * Function description
+	 */
+	// an accessor for the terms object
+	public function terms()
+	{
+		if ( ! $this->terms )
+		{
+			require_once __DIR__ . '/class-bgeo-admin-terms.php';
+			$this->terms = new bGeo_Admin_Terms( $this->bgeo );
+		}
+
+		return $this->terms;
+	} // END terms
+
+	/**
+	 * Function description
+	 */
+	// an accessor for the go_opencalais integration object
+	public function go_opencalais()
+	{
+		// sanity check to make sure the go-opencalais plugin is loaded
+		if ( ! function_exists( 'go_opencalais' ) )
+		{
+			return FALSE;
+		}
+
+		if ( ! $this->go_opencalais )
+		{
+			require_once __DIR__ . '/class-bgeo-admin-go-opencalais.php';
+			$this->go_opencalais = new bGeo_Admin_GO_OpenCalais( $this->bgeo );
+		}
+
+		return $this->go_opencalais;
+	} // END go_opencalais
+
+	/**
+	 * Start things up!
+	 */
+	public function admin_init()
+	{
+		$this->upgrade();
+		$this->go_opencalais();
+
+		// common to both terms and posts
+		add_action( 'admin_enqueue_scripts', array( $this, 'admin_enqueue_scripts' ) );
 	}
 
-	// register and enqueue any scripts needed for the dashboard
+	/**
+	 * Setup scripts and check dependencies for the admin interface
+	 */
 	public function admin_enqueue_scripts()
 	{
-		wp_register_style( $this->bgeo->id_base . '-admin' , $this->bgeo->plugin_url . '/css/' . $this->bgeo->id_base . '-admin.css' , array( $this->bgeo->id_base . '-leaflet' ) , $this->version );
-		wp_enqueue_style( $this->bgeo->id_base . '-admin' );
+		$this->check_dependencies();
 
-		wp_register_script( $this->bgeo->id_base . '-admin', $this->bgeo->plugin_url . '/js/' . $this->bgeo->id_base . '-admin.js', array( $this->bgeo->id_base . '-leaflet' ), $this->version, TRUE );
-		wp_enqueue_script( $this->bgeo->id_base . '-admin');
+		if ( $this->missing_dependencies )
+		{
+			return;
+		}//end if
 
+		// make sure go-ui has been instantiated and its resources registered
+		go_ui();
 	}//end admin_enqueue_scripts
 
+	/**
+	 * check plugin dependencies
+	 */
+	public function check_dependencies()
+	{
+		foreach ( $this->dependencies as $dependency => $url )
+		{
+			if ( function_exists( str_replace( '-', '_', $dependency ) ) )
+			{
+				continue;
+			}//end if
+
+			$this->missing_dependencies[ $dependency ] = $url;
+		}//end foreach
+
+		if ( $this->missing_dependencies )
+		{
+			add_action( 'admin_notices', array( $this, 'admin_notices' ) );
+		}//end if
+	}//end check_dependencies
+
+	/**
+	 * hooked to the admin_notices action to inject a message if depenencies are not activated
+	 */
+	public function admin_notices()
+	{
+		?>
+		<div class="error">
+			<p>
+				You must <a href="<?php echo esc_url( admin_url( 'plugins.php' ) ); ?>">activate</a> the following plugins before using bGeo:
+			</p>
+			<ul>
+				<?php
+				foreach ( $this->missing_dependencies as $dependency => $url )
+				{
+					?>
+					<li><a href="<?php echo esc_url( $url ); ?>"><?php echo esc_html( $dependency ); ?></a></li>
+					<?php
+				}//end foreach
+				?>
+			</ul>
+		</div>
+		<?php
+	}//end admin_notices
+
+	/**
+	 * Function description
+	 */
+	public function script_config()
+	{
+		if ( ! $this->script_config )
+		{
+			$this->script_config = (object) apply_filters( 'go-config', array( 'version' => $this->bgeo->version ), 'go-script-version' );
+		}
+
+		return $this->script_config;
+	}
+
+	/**
+	 * Function description
+	 */
 	public function nonce_field()
 	{
-		wp_nonce_field( plugin_basename( __FILE__ ) , $this->bgeo->id_base .'-nonce' );
+		wp_nonce_field( plugin_basename( __FILE__ ), $this->bgeo->id_base .'-nonce' );
 	}
 
+	/**
+	 * Function description
+	 */
 	public function verify_nonce()
 	{
-		return wp_verify_nonce( $_POST[ $this->bgeo->id_base .'-nonce' ] , plugin_basename( __FILE__ ));
+		return wp_verify_nonce( $_POST[ $this->bgeo->id_base .'-nonce' ], plugin_basename( __FILE__ ) );
 	}
 
+	/**
+	 * Function description
+	 */
 	public function get_field_name( $field_name )
 	{
 		return $this->bgeo->id_base . '[' . $field_name . ']';
 	}
 
+	/**
+	 * Function description
+	 */
 	public function get_field_id( $field_name )
 	{
 		return $this->bgeo->id_base . '-' . $field_name;
 	}
 
-	public function edited_term( $term_id, $tt_id, $taxonomy )
-	{
-
-		// check the nonce
-		if( ! $this->verify_nonce() )
-		{
-			return;
-		}
-
-		// check the permissions
-		$tax = get_taxonomy( $taxonomy );
-		if( ! current_user_can( $tax->cap->edit_terms ) )
-		{
-			return;
-		}
-
-		// save it
-		$this->bgeo->update_geo( $term_id, $taxonomy, stripslashes_deep( $_POST[ $this->bgeo->id_base ] ) );
-	}
-
-	public function delete_term( $term, $tt_id, $taxonomy, $deleted_term )
-	{
-		// check the permissions
-		$tax = get_taxonomy( $taxonomy );
-		if( ! current_user_can( $tax->cap->edit_terms ) )
-		{
-			return;
-		}
-
-		// delete it
-		$this->bgeo->delete_geo( $term_id, $taxonomy, $deleted_term );
-	}
-
-	// the metabox on terms
-	public function term_metabox( $tag, $taxonomy )
-	{
-		// must have this on the page in one of the metaboxes
-		// the nonce is then checked in $this->save_post()
-		$this->nonce_field();
-
-
-		if( empty( $tag ) || empty( $taxonomy ) )
-		{
-			echo 'No tag or taxonomy set.';
-			return;
-		}
-
-		// add the form elements you want to use here.
-		// these are regular html form elements, but use $this->get_field_name( 'name' ) and $this->get_field_id( 'name' ) to identify them
-
-		include_once __DIR__ . '/templates/metabox-details.php';
-
-		// be sure to use proper validation on user input displayed here
-		// http://codex.wordpress.org/Data_Validation
-
-		// use checked() or selected() for checkboxes and select lists
-		// http://codex.wordpress.org/Function_Reference/selected
-		// http://codex.wordpress.org/Function_Reference/checked
-		// there are other convenience methods in WP, as well
-
-		// when saved, the form elements will be passed to
-		// $this->save_post(), which simply checks permissions and
-		// captures the $_POST var, and then passes it to 
-		// bgeo()->update_meta(), where the data is sanitized and 
-		// validated before saving
-	}
-
-	// should we add our metabox to this post type?
-	public function post_metaboxes( $post_type )
-	{
-		add_meta_box(
-			$this->get_field_id( 'post_metabox' ),
-			'Locations',
-			array( $this , 'post_metabox' ),
-			$post_type,
-			'normal',
-			'high'
-		);
-	}
-
-	// the metabox on posts
-	public function post_metabox( $post )
-	{
-		// must have this on the page in one of the metaboxes
-		// the nonce is then checked in $this->save_post()
-		$this->nonce_field();
-
-
-		if( empty( $tag ) || empty( $taxonomy ) )
-		{
-			echo 'No tag or taxonomy set.';
-			return;
-		}
-
-		// add the form elements you want to use here.
-		// these are regular html form elements, but use $this->get_field_name( 'name' ) and $this->get_field_id( 'name' ) to identify them
-
-		include_once __DIR__ . '/templates/metabox-details.php';
-
-		// be sure to use proper validation on user input displayed here
-		// http://codex.wordpress.org/Data_Validation
-
-		// use checked() or selected() for checkboxes and select lists
-		// http://codex.wordpress.org/Function_Reference/selected
-		// http://codex.wordpress.org/Function_Reference/checked
-		// there are other convenience methods in WP, as well
-
-		// when saved, the form elements will be passed to
-		// $this->save_post(), which simply checks permissions and
-		// captures the $_POST var, and then passes it to 
-		// bgeo()->update_meta(), where the data is sanitized and 
-		// validated before saving
-	}
-
+	/**
+	 * Function description
+	 */
 	public function upgrade()
 	{
 		$options = get_option( $this->bgeo->id_base );
 
 		// initial activation and default options
-		if( ! isset( $options['version'] ) )
+		if (
+			! isset( $options['version']  ) ||
+			$this->bgeo->version > $options['version']
+		)
 		{
 			// create the table
 			$this->create_table();
 
 			// set the options
 			$options['version'] = $this->bgeo->version;
-		}
+		}//end if
 
 		// replace the old options with the new ones
-		update_option( $this->bgeo->id_base , $options );
-	}
+		update_option( $this->bgeo->id_base, $options );
+	}//end upgrade
 
-	function create_table()
+	/**
+	 * Function description
+	 */
+	public function create_table()
 	{
 		global $wpdb;
 
-		if ( ! empty( $wpdb->charset ))
+		if ( ! empty( $wpdb->charset ) )
 		{
 			$charset_collate = 'DEFAULT CHARACTER SET '. $wpdb->charset;
 		}
-		if ( ! empty( $wpdb->collate ))
+		if ( ! empty( $wpdb->collate ) )
 		{
 			$charset_collate .= ' COLLATE '. $wpdb->collate;
 		}
 
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 
-		return dbDelta("
+		return dbDelta( "
 			CREATE TABLE " . $this->bgeo->table . " (
 				`term_taxonomy_id` bigint(20) unsigned NOT NULL,
 				`point` point NOT NULL DEFAULT '',
 				`bounds` geometrycollection NOT NULL DEFAULT '',
 				`area` int(10) unsigned NOT NULL,
+				`api` char(5) DEFAULT NULL,
+				`api_id` char(32) DEFAULT NULL,
+				`api_raw` text,
+				`belongtos` text,
 				PRIMARY KEY (`term_taxonomy_id`),
 				SPATIAL KEY `point` (`point`),
-				SPATIAL KEY `bounds` (`bounds`)
+				SPATIAL KEY `bounds` (`bounds`),
+				KEY `api_and_api_id` (`api`(1),`api_id`(3) )
 			) ENGINE=MyISAM $charset_collate
-		");
-	}
-
-}//end bGeo_Admin class
+		" );
+	}//end create_table
+}//end class
