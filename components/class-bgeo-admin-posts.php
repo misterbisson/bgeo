@@ -526,6 +526,70 @@ class bGeo_Admin_Posts
 	 */
 	public function locationlookup( $query = NULL, $reverse_geocode = FALSE )
 	{
+		// pass this on to the helper method
+		$raw_results = $this->_locationlookup( $query, $reverse_geocode );
+
+		// do an initial check through the results to see if we should automatically retry as a reverse geocode
+		foreach ( $raw_results as $raw_location )
+		{
+			// try a reverse geocode if the initial query didn't return a usable result
+			if (
+				! isset( $raw_location->woeid ) &&
+				! $reverse_geocode &&
+				isset( $raw_location->latitude, $raw_location->longitude )
+			)
+			{
+				$raw_results = array_merge(
+					$raw_results,
+					$this->_locationlookup( $raw_location->latitude . ', ' . $raw_location->longitude, TRUE )
+				);
+			}//end if
+		}//end foreach
+
+		// get locations from the placemaker api (the two APIs are unioned below
+		// this API returns better results for colloquial queries, like "west coast
+		$locations = (array) $this->_locationsfromtext( $text );
+
+		// iterate through placefinder API results and add those to the return set
+		foreach ( $raw_results as $raw_location )
+		{
+			// attempt to get the term for this yaddr
+			$location = bgeo()->new_geo_by_yaddr( $raw_location );
+
+			if ( ! $location || is_wp_error( $location ) )
+			{
+				continue;
+			}//end if
+
+			// remove the raw woe object to conserve space
+			unset( $location->api_raw );
+
+			$locations[ $location->term_taxonomy_id ] = $location;
+
+			// prefetch the belongto terms
+			// @TODO: should this move to the save_post hook?
+			if ( isset( $location->belongtos ) && is_array( $location->belongtos ) )
+			{
+				foreach ( $location->belongtos as $belongto )
+				{
+					if ( 'woeid' != $belongto->api )
+					{
+						continue;
+					}
+
+					bgeo()->new_geo_by_woeid( $belongto->api_id );
+				}
+			}//end if
+		}//end foreach
+
+		return array_filter( $locations );
+	}//end locationlookup
+
+	/**
+	 * Helper method to do the YQL query for locationlookup() and others
+	 */
+	public function _locationlookup( $query = NULL, $reverse_geocode = FALSE, $recursion = FALSE )
+	{
 		// validate that we have a sring, and that it's at least 3 chars
 		if (
 			! is_string( $query ) ||
@@ -561,42 +625,7 @@ class bGeo_Admin_Posts
 			$raw_result->Result = array( $raw_result->Result );
 		}//end if
 
-		// get locations from the placemaker api (the two APIs are unioned below
-		// this API returns better results for colloquial queries, like "west coast
-		$locations = (array) $this->_locationsfromtext( $text );
+		return $raw_result->Result;
+	}//end _locationlookup
 
-		// iterate through placefinder API results and add those to the return set
-		foreach ( $raw_result->Result as $raw_location )
-		{
-			// attempt to get the term for this yaddr
-			$location = bgeo()->new_geo_by_yaddr( $raw_location );
-
-			if ( ! $location || is_wp_error( $location ) )
-			{
-				continue;
-			}//end if
-
-			// remove the raw woe object to conserve space
-			unset( $location->api_raw );
-
-			$locations[ $location->term_taxonomy_id ] = $location;
-
-			// prefetch the belongto terms
-			// @TODO: should this move to the save_post hook?
-			if ( isset( $location->belongtos ) && is_array( $location->belongtos ) )
-			{
-				foreach ( $location->belongtos as $belongto )
-				{
-					if ( 'woeid' != $belongto->api )
-					{
-						continue;
-					}
-
-					bgeo()->new_geo_by_woeid( $belongto->api_id );
-				}
-			}//end if
-		}//end foreach
-
-		return array_filter( $locations );
-	}//end locationlookup
 }//end class

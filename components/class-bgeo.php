@@ -746,21 +746,51 @@ print_r( $wpdb );
 			return $error;
 		}
 
-		// the WOEID is required
-		// @TODO: if the result includes lat/lon, but no WOEID, then repeat the query as a reverse geocode on that lat/lon
+		// Attempt to get a better WOEID by looking up the address parts
+		// Why? the WOEID in these results is often just a zip code, rather than a town name, resulting in ugly data
+		$better_woeid_query = implode( ', ', array_intersect_key(
+			(array) $yaddr_object,
+			array(
+				'neighborhood' => TRUE,
+				'city' => TRUE,
+				'state' => TRUE,
+				'country' => TRUE,
+			)
+		) );
+
+		if ( ! empty( $better_woeid_query ) )
+		{
+			$better_woeid_raw = $this->admin()->posts()->_locationlookup(
+				implode( ', ', array_intersect_key(
+					(array) $yaddr_object,
+					array(
+						'neighborhood' => TRUE,
+						'city' => TRUE,
+						'state' => TRUE,
+						'country' => TRUE,
+					)
+				) )
+			);
+			if ( isset( $better_woeid_raw[0]->woeid ) )
+			{
+				$yaddr_object->woeid = $better_woeid_raw[0]->woeid;
+			}
+		}
+
+		// One WOEID or another is required
 		if ( empty( $yaddr_object->woeid ) )
 		{
 			$error = new WP_Error( 'invalid_yaddr', 'No WOEID present in the Yahoo address object' );
 			return $error;
 		}
 
-		// if the address match isn't good enough to get a hash, then it's only as specific as the WOEID
+		// If the address match isn't good enough to get a hash, then it's only as specific as the WOEID
 		if ( empty( $yaddr_object->hash ) )
 		{
 			return $this->new_geo_by_woeid( $yaddr_object->woeid );
 		}
 
-		// check for an existing geo object for this hash
+		// Check for an existing geo object for this hash
 		$existing = $this->get_geo_by_api_id( 'yaddr', $yaddr_object->hash );
 		if ( ! is_wp_error( $existing ) )
 		{
@@ -771,10 +801,9 @@ print_r( $wpdb );
 		$geo->api = 'yaddr';
 		$geo->api_raw = $yaddr_object;
 		$geo->api_id = $geo->api_raw->hash;
-		// @TODO: the WOEID in these results is often just a zip code, rather than a town name. We really need to do a second query to lookup the neighborhood/city/state/country into a better WOEID
 		$geo->belongtos = $this->get_belongtos( 'woeid', $geo->api_raw->woeid );
 
-		// whatsoever shall we name this geo?
+		// Whatsoever shall we name this geo?
 		$name_parts = array_intersect_key( (array) $geo->api_raw, array(
 			'line1' => TRUE,
 			'line2' => TRUE,
@@ -783,7 +812,7 @@ print_r( $wpdb );
 		) );
 		$term_name = wp_kses( implode( ' ', $name_parts ), array() );
 
-		// get or create a term for this geo
+		// Get or create a term for this geo
 		$term_slug = (int) $geo->api_raw->woeid . '-' . sanitize_title_with_dashes( str_replace( array( '/', '_' ), ' ', $term_name ) );
 		if ( ! $term = get_term_by( 'slug', $term_slug, $this->geo_taxonomy_name ) )
 		{
@@ -791,19 +820,19 @@ print_r( $wpdb );
 			$term = get_term( $new_term->term_id, $this->geo_taxonomy_name );
 		}
 
-		// did we get a term?
+		// Did we get a term?
 		if ( ! isset( $term->term_taxonomy_id ) )
 		{
 			$error = new WP_Error( 'no_term', 'Either couldn\'t find or couldn\'t create a term for this Yahoo address object' );
 			return $error;
 		}
 
-		// get the centroid for this geo
+		// Get the centroid for this geo
 		$point = $this->new_geometry( '{ "type": "Point", "coordinates": [' . $geo->api_raw->longitude . ', ' . $geo->api_raw->offsetlat . '] }', 'json' );
 		$geo->point_lat = $point->getY();
 		$geo->point_lon = $point->getX();
 
-		// get the bounding box for this geo
+		// Get the bounding box for this geo
 		$bounds = $this->new_geometry( '{ "type": "LineString", "coordinates": [ [' . ( $geo->api_raw->offsetlon + 0.0001 ) . ', ' . ( $geo->api_raw->offsetlat + 0.0001 ) . '], [' . ( $geo->api_raw->offsetlon - 0.0001 ) . ', ' . ( $geo->api_raw->offsetlat - 0.0001 ) . '] ]}', 'json' );
 		$geo->bounds = $bounds->envelope()->out( 'json' );
 
