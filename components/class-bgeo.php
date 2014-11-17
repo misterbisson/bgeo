@@ -143,9 +143,9 @@ class bGeo
 		}
 
 		return geoPHP::load( $input, $adapter );
-	} // END new_geometry
+	}// END new_geometry
 
-	// get a geo record
+	// get all the geos attached to a post
 	public function get_object_geos( $post_id )
 	{
 		$terms = wp_get_object_terms( $post_id, $this->geo_taxonomy_name, array( 'fields' => 'ids' ) );
@@ -166,7 +166,38 @@ class bGeo
 		}
 
 		return $geos;
-	}
+	}// END get_object_geos
+
+	// get the primary geos attached to a post
+	public function get_object_primary_geos( $post_id )
+	{
+		$post_meta = $this->admin()->posts()->get_post_meta( $post_id );
+		if (
+			! is_object( $post_meta ) ||
+			! isset( $post_meta->primary ) ||
+			! is_array( $post_meta->primary )
+		)
+		{
+			return array();
+		}
+
+		$geos = array();
+		foreach ( $post_meta->primary as $temp )
+		{
+			$geo = $this->get_geo_by_api_id( $temp->api , $temp->api_id );
+			if (
+				empty( $geo ) ||
+				is_wp_error( $geo )
+			)
+			{
+				continue;
+			}
+
+			$geos[ $geo->term_taxonomy_id ] = $geo;
+		}
+
+		return $geos;
+	}// END get_object_geos
 
 	// get a geo record
 	public function get_geo_by( $field, $value, $taxonomy = NULL )
@@ -188,7 +219,7 @@ class bGeo
 		}
 
 		return $this->get_geo( $term->term_id, $term->taxonomy );
-	}
+	}// END get_geo_by
 
 	// get a geo record
 	public function get_geo( $term_id, $taxonomy = NULL )

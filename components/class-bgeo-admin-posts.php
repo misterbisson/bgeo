@@ -7,11 +7,6 @@ class bGeo_Admin_Posts
 {
 	private $bgeo = NULL;
 
-	private $dependencies = array(
-		'go-ui' => 'https://github.com/GigaOM/go-ui',
-	);
-	private $missing_dependencies = array();
-
 	/**
 	 * constructor
 	 */
@@ -82,7 +77,7 @@ class bGeo_Admin_Posts
 					'nonce'           => wp_create_nonce( 'bgeo' ),
 					'post_id'         => $post->ID,
 					'geo_suggestions' => (object) array(),
-					'post_geos'       => (object) $this->bgeo->get_object_geos( $post->ID ),
+					'post_geos'       => (object) $this->bgeo->get_object_primary_geos( $post->ID ),
 				);
 
 				wp_localize_script( 'bgeo-admin-posts', 'bgeo', $localized_values );
@@ -141,43 +136,84 @@ class bGeo_Admin_Posts
 		// validated before saving
 	}//end metaboxe
 
+	public function get_term_ids_from_geo( $geo )
+	{
+		if (
+			! is_object( $geo ) ||
+			! isset( $geo->term_id )
+		)
+		{
+			return array();
+		}
+
+		// add this term, and its immediate belongtos to the post
+		$terms = array();
+		$terms[] = (int) $geo->term_id;
+
+		if ( ! isset( $geo->belongtos ) )
+		{
+			return $terms;
+		}
+
+		foreach ( $geo->belongtos as $belongto )
+		{
+			$geo = $this->bgeo->get_geo_by_api_id( $belongto->api, $belongto->api_id );
+
+			if ( ! is_wp_error( $geo ) )
+			{
+				$terms[] = (int) $geo->term_id;
+			}
+		}
+
+		return $terms;
+	}
+
 	// @TODO: this method will need to be refactored based on what we do in update_post_meta()
 	public function get_post_meta( $post_id )
 	{
 		if ( ! $meta = get_post_meta( $post_id, $this->bgeo->id_base, TRUE ) )
 		{
-			return array();
+			return (object) array( 'primary' => array() );
 		} // END if
 
-		return $meta;
+		return (object) $meta;
 	} // END get_post_meta
 
-	// @TODO: this method is incomplete
 	public function update_post_meta( $post_id, $meta )
 	{
+		$term_ids = $primary_geos = array();
 
-		$terms = array();
+		// get the location from core geo meta, if it exists
+		if (
+			( $core_location = $this->bgeo->admin()->postmeta()->update_location_from_core_geo_meta( $post_id ) ) &&
+			is_object( $core_location ) &&
+			isset( $core_location->term_id )
+		)
+		{
+			$primary_geos[] = $core_location;
+			$term_ids = array_merge( $term_ids, $this->get_term_ids_from_geo( $core_location ) );
+		}
+
+		// get the locations from the post form
 		if ( isset( $meta['term'] ) && is_array( $meta['term'] ) )
 		{
 			foreach ( $meta['term'] as $slug => $unused )
 			{
-				$term = get_term_by( 'slug', $slug, $this->bgeo->geo_taxonomy_name );
-
-				if ( ! is_wp_error( $term ) )
-				{
-					$terms[] = $term->term_id;
-				}
+				$geo = $this->geo->get_geo_by( 'slug', $slug );
+				$primary_geos[] = $geo;
+				$term_ids = array_merge( $term_ids, $this->get_term_ids_from_geo( $geo ) );
 			}
 		}
 
-		wp_set_object_terms( $post_id, $terms, $this->bgeo->geo_taxonomy_name, FALSE );
-
-		// return update_post_meta( $post_id, $this->bgeo->post_meta_key, $meta );
+		// now save everything
+		wp_set_object_terms( $post_id, $term_ids, $this->bgeo->geo_taxonomy_name, FALSE );
+		update_post_meta( $post_id, $this->bgeo->id_base, (object) array(
+			'primary' => $primary_geos,
+		) );
 	} // END update_post_meta
 
 	public function save_post( $post_id, $post )
 	{
-
 		// Check nonce
 		if ( ! $this->bgeo->admin()->verify_nonce() )
 		{
@@ -438,7 +474,7 @@ class bGeo_Admin_Posts
 		wp_send_json( $locations );
 	}//end ajax_locationsfromcontent
 
-	public function locationlookup( $query = NULL )
+	public function locationlookup( $query = NULL, $reverse_geocode = FALSE )
 	{
 		// validate that we have a sring, and that it's at least 3 chars
 		if (
@@ -449,9 +485,18 @@ class bGeo_Admin_Posts
 			return FALSE;
 		}//end if
 
+		if ( $reverse_geocode )
+		{
+			$reverse_qflag = ' AND gflags="R"';
+		}
+		else
+		{
+			$reverse_qflag = '';
+		}
+
 		// check the placefinder API
 		// API results are cached in the underlying method
-		$query = 'SELECT * FROM geo.placefinder where text = "' . str_replace( '"', '\'', $query ) . '"';
+		$query = 'SELECT * FROM geo.placefinder WHERE text = "' . str_replace( '"', '\'', $query ) . '"' . $reverse_qflag;
 		$raw_result = bgeo()->yahoo()->yql( $query );
 
 		if ( ! isset( $raw_result->Result ) )
@@ -481,7 +526,7 @@ class bGeo_Admin_Posts
 			}//end if
 
 			// remove the raw woe object to conserve space
-//			unset( $location->api_raw );
+			unset( $location->api_raw );
 
 			$locations[ $location->term_taxonomy_id ] = $location;
 

@@ -5,9 +5,10 @@ This class includes the admin UI components and metaboxes, and the supporting me
 
 class bGeo_Admin
 {
-	private $bgeo = NULL;
-	public $posts = NULL;
-	public $terms = NULL;
+	private $bgeo    = NULL;
+	public $postmeta = NULL;
+	public $posts    = NULL;
+	public $terms    = NULL;
 	public $go_opencalais = NULL;
 	public $script_config = NULL;
 
@@ -24,8 +25,9 @@ class bGeo_Admin
 		$this->bgeo = $bgeo;
 		add_action( 'admin_init', array( $this , 'admin_init' ) );
 
-		$this->terms();
+		$this->postmeta();
 		$this->posts();
+		$this->terms();
 	}//end __construct
 
 	// an accessor for the posts object
@@ -38,6 +40,18 @@ class bGeo_Admin
 		}
 
 		return $this->posts;
+	} // END posts
+
+	// an accessor for the postmeta object
+	public function postmeta()
+	{
+		if ( ! $this->postmeta )
+		{
+			require_once __DIR__ . '/class-bgeo-admin-postmeta.php';
+			$this->postmeta = new bGeo_Admin_Postmeta( $this->bgeo );
+		}
+
+		return $this->postmeta;
 	} // END posts
 
 	// an accessor for the terms object
