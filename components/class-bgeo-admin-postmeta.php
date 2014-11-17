@@ -25,7 +25,9 @@ class bGeo_Admin_Postmeta
 		add_action( 'save_post', array( $this, 'save_post' ), 10, 2 );
 	}//end init
 
-	// @TODO: this method will need to be refactored based on what we do in update_post_meta()
+	/**
+	 * a convenience method for getting our postmeta
+	 */
 	public function get_post_meta( $post_id )
 	{
 		if ( ! $meta = (object) get_post_meta( $post_id, $this->id_base, TRUE ) )
@@ -39,7 +41,9 @@ class bGeo_Admin_Postmeta
 		return $meta;
 	} // END get_post_meta
 
-	// @TODO: this method is incomplete
+	/**
+	 * a convenience method for setting our postmeta and taxonomy terms
+	 */
 	public function update_post_meta( $post_id, $meta )
 	{
 		$term_ids = $this->bgeo->admin->posts()->get_term_ids_from_geo( $meta->geo );
@@ -47,12 +51,18 @@ class bGeo_Admin_Postmeta
 		update_post_meta( $post_id, $this->id_base, $meta );
 	} // END update_post_meta
 
+	/**
+	 * a wrapper for doing a reverse geocode lookup from the bGeo_Admin_Posts class
+	 */
 	public function locationlookup( $text )
 	{
 		return $this->bgeo->admin()->posts()->locationlookup( $text, TRUE );
 	}// END locationlookup
 
-	// see wp docs at http://codex.wordpress.org/Geodata for background
+	/**
+	 * get the WordPress core geodata from the postmeta
+	 * see wp docs at http://codex.wordpress.org/Geodata for background
+	 */
 	public function get_core_geo_meta( $post_id )
 	{
 		$meta = (array) get_post_meta( $post_id );
@@ -82,11 +92,20 @@ class bGeo_Admin_Postmeta
 			}
 
 			$meta[ $k ] = $v;
-		}
+		}//end foreach
 
 		return $meta;
 	}// END get_core_geo_meta
 
+	/**
+	 * Check the WP core geodata,
+	 * see if it's different from what was processed previously,
+	 * and update the post with new data if the bGeo data was stale.
+	 *
+	 * Always returns a location geo, even if it hasn't changed.
+	 *
+	 * Used both by the save_post hook in this class, and during save_post in the bGeo_Admin_Posts class.
+	 */
 	public function update_location_from_core_geo_meta( $post_id )
 	{
 		// check for core geo meta
@@ -123,15 +142,21 @@ class bGeo_Admin_Postmeta
 		// save it to meta so we don't have to make API calls on future saves (unless it changes)
 		$this->update_post_meta( $post_id, (object) array(
 			'hash' => $core_hash,
-			'geo' => $location,			
+			'geo' => $location,
 		) );
 
 		return $location;
 	}// END update_location_from_core_geo_meta
 
-	public function save_post( $post_id, $post )
+	/**
+	 * Hooked to save_post, just does one useful thing.
+	 */
+	public function save_post( $post_id, $unused_post )
 	{
+		// I typically check a nonce, etc. before changing data on the save_post hook.
+		// This exception is because the data is being created and validated elsewhere.
+		// So we have to trust that the other code (including core) is properly validating along the way.
+		// If not, the risk is minimal (an added geo term).
 		$this->update_location_from_core_geo_meta( $post_id );
 	}// END save_post
-
-}//end bGeo_Admin_Postmeta class
+}//end class

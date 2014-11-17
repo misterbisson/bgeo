@@ -50,6 +50,9 @@ class bGeo_Yahoo
 		'31' => 0,
 	);
 
+	/**
+	 * Function description
+	 */
 	public function __construct()
 	{
 		if ( is_admin() )
@@ -59,27 +62,34 @@ class bGeo_Yahoo
 			add_action( 'wp_ajax_bgeo-yahoo-placespotter', array( $this, 'placespotter_ajax' ) );
 			add_action( 'wp_ajax_bgeo-yahoo-yql', array( $this, 'yql_ajax' ) );
 		}
-	}
+	}//end __construct
 
+	/**
+	 * Function description
+	 */
 	public function cache_key( $component, $query )
 	{
 		return md5( $this->version . $component . serialize( $query ) );
-	}
+	}//end cache_key
 
+	/**
+	 * Function description
+	 */
 	public function cache_ttl( $code )
 	{
-
 		if ( 200 != $code )
 		{
 			return $cache_ttl_fail;
 		}
 
 		return $this->cache_ttl_success;
-	}
+	}//end cache_ttl
 
+	/**
+	 * Function description
+	 */
 	public function boss( $query, $api = 'web' )
 	{
-
 		$multiple = FALSE;
 		if ( is_array( $api ) )
 		{
@@ -128,13 +138,13 @@ class bGeo_Yahoo
 				sprintf( '%s?%s', $url, OAuthUtil::build_http_query( $args ) ),
 				array(
 					'headers' => array(
-						'Authorization' => str_ireplace( 'Authorization: ', '', $headers[0] )
+						'Authorization' => str_ireplace( 'Authorization: ', '', $headers[0] ),
 					)
 				)
 			);
 
 			wp_cache_set( $this->cache_key( $api, $query ), $api_result, $this->id_base, $this->cache_ttl( wp_remote_retrieve_response_code( $api_result ) ) );
-		}
+		}//end if
 
 		// did the API return a valid response code?
 		if ( 200 != wp_remote_retrieve_response_code( $api_result ) )
@@ -144,7 +154,7 @@ class bGeo_Yahoo
 				wp_remote_retrieve_response_code( $api_result ) . wp_remote_retrieve_response_message( $api_result )
 			);
 			return FALSE;
-		}
+		}//end if
 
 		// did we get a result that makes sense?
 		$api_result = json_decode( wp_remote_retrieve_body( $api_result ) );
@@ -153,7 +163,7 @@ class bGeo_Yahoo
 		{
 			$this->errors[] = new WP_Error( 'api_response_error', 'The endpoint didn\'t return a meaningful result. This response may have been cached.', $api_result );
 			return FALSE;
-		}
+		}//end if
 
 		if ( $multiple )
 		{
@@ -162,9 +172,12 @@ class bGeo_Yahoo
 		else
 		{
 			return $api_result->bossresponse->$api->results;
-		}
-	}
+		}//end else
+	}//end boss
 
+	/**
+	 * Function description
+	 */
 	public function boss_ajax()
 	{
 die;
@@ -177,8 +190,11 @@ die;
 		print_r( $this->errors );
 
 		die;
-	}
+	}//end boss_ajax
 
+	/**
+	 * Function description
+	 */
 	public function placefinder( $query )
 	{
 		// we're using the placefinder api here
@@ -186,7 +202,6 @@ die;
 
 		if ( ! $api_result = wp_cache_get( $this->cache_key( $api, $query ), $this->id_base ) )
 		{
-
 			// make sure we're configured
 			if (
 				! is_object( bgeo()->options()->yahooapi ) ||
@@ -232,13 +247,13 @@ die;
 				$formatted_url,
 				array(
 					'headers' => array(
-						'Authorization' => str_ireplace( 'Authorization: ', '', $headers[0] )
+						'Authorization' => str_ireplace( 'Authorization: ', '', $headers[0] ),
 					)
 				)
 			);
 
 			wp_cache_set( $this->cache_key( $api, $query ), $api_result, $this->id_base, $this->cache_ttl( wp_remote_retrieve_response_code( $api_result ) ) );
-		}
+		}//end if
 
 		// did the API return a valid response code?
 		if ( 200 != wp_remote_retrieve_response_code( $api_result ) )
@@ -260,8 +275,11 @@ die;
 		}
 
 		return $api_result->bossresponse->placefinder->results;
-	}
+	}//end placefinder
 
+	/**
+	 * Function description
+	 */
 	public function placefinder_ajax()
 	{
 die;
@@ -284,14 +302,20 @@ die;
 		print_r( $this->errors );
 
 		die;
-	}
+	}//end placefinder_ajax
 
+	/**
+	 * Function description
+	 */
 	public function placespotter_ajax()
 	{
 		// http://developer.yahoo.com/boss/geo/docs/key-concepts.html
 		// http://developer.yahoo.com/boss/geo/docs/codeexamples.html#oauth_php
-	}
+	}//end placespotter_ajax
 
+	/**
+	 * Function description
+	 */
 	public function yql( $query )
 	{
 		// we're using the yql api here
@@ -316,7 +340,7 @@ die;
 			) );
 
 			wp_cache_set( $this->cache_key( $api, $query ), $api_result, $this->id_base, $this->cache_ttl( wp_remote_retrieve_response_code( $api_result ) ) );
-		}
+		}//end if
 
 		// did the API return a valid response code?
 		if ( 200 != wp_remote_retrieve_response_code( $api_result ) )
@@ -338,8 +362,11 @@ die;
 		}
 
 		return $api_result->query->results;
-	}
+	}//end yql
 
+	/**
+	 * Function description
+	 */
 	public function yql_ajax()
 	{
 die;
@@ -354,6 +381,5 @@ die;
 		print_r( $this->errors );
 
 		die;
-	}
-
-}//end bGeo_Yahoo class
+	}//end yql_ajax
+}//end class

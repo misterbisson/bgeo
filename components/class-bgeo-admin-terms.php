@@ -7,11 +7,6 @@ class bGeo_Admin_Terms
 {
 	private $bgeo = NULL;
 
-	private $dependencies = array(
-		'go-ui' => 'https://github.com/GigaOM/go-ui',
-	);
-	private $missing_dependencies = array();
-
 	/**
 	 * constructor
 	 */
@@ -26,28 +21,31 @@ class bGeo_Admin_Terms
 	 */
 	public function init()
 	{
-		add_action( 'admin_init', array( $this , 'admin_init' ) );
+		add_action( 'admin_init', array( $this, 'admin_init' ) );
 
-		add_action( 'created_term', array( $this , 'edited_term' ), 5, 3 );
-		add_action( 'edited_term', array( $this , 'edited_term' ), 5, 3 );
+		add_action( 'created_term', array( $this, 'edited_term' ), 5, 3 );
+		add_action( 'edited_term', array( $this, 'edited_term' ), 5, 3 );
 		// the above are only relevant to interactive term creation and updates
 		// term deletion (which can happen without human interaction) is handled in the main bGeo class
-	}
+	}//end init
 
+	/**
+	 * Keep it going on admin_init!
+	 */
 	public function admin_init()
 	{
 		// add any JS or CSS for the needed for the dashboard
-		add_action( 'admin_enqueue_scripts', array( $this , 'admin_enqueue_scripts' ) );
+		add_action( 'admin_enqueue_scripts', array( $this, 'admin_enqueue_scripts' ) );
 
 		//add the geo metabox to each of the taxonomies we're registered against
 		foreach ( $this->bgeo->options()->taxonomies as $taxonomy )
 		{
 			add_action( $taxonomy . '_edit_form_fields', array( $this, 'metabox' ), 5, 2 );
 		}
-	}
+	}//end admin_init
 
 	/**
-	 * Setup scripts and check dependencies for the admin interface
+	 * Setup scripts to support term editing
 	 */
 	public function admin_enqueue_scripts( $hook_suffix )
 	{
@@ -73,29 +71,36 @@ class bGeo_Admin_Terms
 
 			default:
 				return;
-		}
+		}//end switch
 	}//end admin_enqueue_scripts
 
-	public function edited_term( $term_id, $tt_id, $taxonomy )
+	/**
+	 * Hooked to edited_term to capture details from the term metabox
+	 *
+	 * This is like the save_post hook for terms.
+	 */
+	public function edited_term( $term_id, $unused_tt_id, $taxonomy )
 	{
-
 		// check the nonce
-		if( ! $this->bgeo->admin()->verify_nonce() )
+		if ( ! $this->bgeo->admin()->verify_nonce() )
 		{
 			return;
 		}
 
 		// check the permissions
 		$tax = get_taxonomy( $taxonomy );
-		if( ! current_user_can( $tax->cap->edit_terms ) )
+		if ( ! current_user_can( $tax->cap->edit_terms ) )
 		{
 			return;
 		}
 
 		// save it
 		$this->bgeo->update_geo( $term_id, $taxonomy, stripslashes_deep( $_POST[ $this->bgeo->id_base ] ) );
-	}
+	}//end edited_term
 
+	/**
+	 * Add a metabox showing the map and extra geo fields to the term editor in our taxonomy
+	 */
 	// the metabox on terms
 	public function metabox( $tag, $taxonomy )
 	{
@@ -104,7 +109,7 @@ class bGeo_Admin_Terms
 		$this->bgeo->admin()->nonce_field();
 
 
-		if( empty( $tag ) || empty( $taxonomy ) )
+		if ( empty( $tag ) || empty( $taxonomy ) )
 		{
 			echo 'No tag or taxonomy set.';
 			return;
@@ -128,6 +133,5 @@ class bGeo_Admin_Terms
 		// captures the $_POST var, and then passes it to
 		// bgeo()->update_meta(), where the data is sanitized and
 		// validated before saving
-	}
-
-}//end bGeo_Admin_Terms class
+	}//end metabox
+}//end class

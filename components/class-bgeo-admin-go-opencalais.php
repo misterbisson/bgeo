@@ -16,6 +16,9 @@ class bGeo_Admin_GO_OpenCalais
 		'Region'             => 'bgeo_tags',
 	);
 
+	/**
+	 * Constructor
+	 */
 	public function __construct( $bgeo )
 	{
 		$this->bgeo = $bgeo;
@@ -23,8 +26,18 @@ class bGeo_Admin_GO_OpenCalais
 		$this->register_taxonomy();
 
 		add_filter( 'bgeo_locationsfromtext', array( $this, 'bgeo_locationsfromtext' ), 2, 3 );
-	}
+	}// END __construct
 
+	/**
+	 * Filter the geo entities extracted from the text/post content.
+	 *
+	 * OpenCalais focuses on relevant matches (and includes a relevance rank).
+	 * Yahoo!'s location objects are more useful, but the location extraction
+	 * includes more, often less relevant results.
+	 *
+	 * Combining both, converting OpenCalais suggestions to Yahoo geo objects,
+	 * and using the OpenCalais ranking, can lead to higher quality suggestions
+	 */
 	public function bgeo_locationsfromtext( $locations, $post_id, $text )
 	{
 
@@ -37,7 +50,7 @@ class bGeo_Admin_GO_OpenCalais
 		$enrich_obj->enrich();
 
 		// did we get a result from opencalais?
-		if( ! is_array( $enrich_obj->response ) )
+		if ( ! is_array( $enrich_obj->response ) )
 		{
 			return $locations;
 		}
@@ -69,15 +82,21 @@ class bGeo_Admin_GO_OpenCalais
 				}
 
 				$locations[ $location->term_taxonomy_id ] = $location;
-			}
-		}
+			}//end foreach
+		}//end foreach
 
 		return $locations;
-	}
+	}// END bgeo_locationsfromtext
 
+	/**
+	 * Returns an existing geo object for a given OpenCalais location record.
+	 *
+	 * If no existing geo is found, it passes the location on to create_geo(), which creates it.
+	 *
+	 * returns a geo location
+	 */
 	public function get_geo( $opencalais_location )
 	{
-
 		// sanitize the location
 		if ( ! $opencalais_location = $this->sanitize_opencalais_location( $opencalais_location ) )
 		{
@@ -97,9 +116,20 @@ class bGeo_Admin_GO_OpenCalais
 		}
 
 		// lookup and return the proper geo for this TTID. Or try to, anyway.
-		return $this->bgeo->get_geo_by( 'slug',  trim( $term->description ) );
-	}
+		return $this->bgeo->get_geo_by( 'slug', trim( $term->description ) );
+	}// END get_geo
 
+	/**
+	 * Creates a geo object for a given OpenCalais location record.
+	 * OpenCalais locations are stored as terms in a custom taxonomy specifically for this purpose.
+	 * This creates a persistent map between OpenCalais term IDs (expressed as linked data URLs) and Yahoo locations.
+	 *
+	 * term slug is the md5() of the OpenCalais term ID
+	 * term name is the fully qualified location named given from OpenCalais
+	 * term description is the slug identifying the proper geo term in the normal bGeo taxonomy
+	 *
+	 * returns a geo location
+	 */
 	public function create_geo( $opencalais_location )
 	{
 		// sanitize the location
@@ -144,12 +174,15 @@ class bGeo_Admin_GO_OpenCalais
 			return $error;
 		}
 
-		return $this->bgeo->get_geo_by( 'slug',  trim( $term->description ) );
-	}
+		return $this->bgeo->get_geo_by( 'slug', trim( $term->description ) );
+	}// END create_geo
 
+	/**
+	 * Validates that the provided location has its data, creates the slug and name for the term
+	 */
 	public function sanitize_opencalais_location( $opencalais_location )
 	{
-		if( 
+		if (
 			! is_object( $opencalais_location ) ||
 			! isset( $opencalais_location->id, $opencalais_location->name )
 		)
@@ -163,8 +196,11 @@ class bGeo_Admin_GO_OpenCalais
 		);
 
 		return $opencalais_location;
-	}
+	}// END sanitize_opencalais_location
 
+	/**
+	 * Register our custom taxonomy
+	 */
 	public function register_taxonomy()
 	{
 		register_taxonomy( $this->geo_taxonomy_name, $this->bgeo->post_types, array(
@@ -185,13 +221,12 @@ class bGeo_Admin_GO_OpenCalais
 				'choose_from_most_used' => 'Choose from most used OpenCalais geographies',
 				'not_found' => 'No OpenCalais geographies found',
 			),
-			// 'hierarchical' => TRUE,
-			'show_ui' => TRUE,
-			'show_admin_column' => TRUE,
-			'query_var' => TRUE,
+			'public' => FALSE,
+			'show_ui' => FALSE,
+			'show_admin_column' => FALSE,
+			'query_var' => FALSE,
 			'rewrite' => FALSE,
 		) );
 
-	} // END register_taxonomy
-
-}//end bGeo_Admin_GO_OpenCalais class
+	}// END register_taxonomy
+}//end class

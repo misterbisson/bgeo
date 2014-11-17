@@ -18,7 +18,6 @@ class bGeo
 	public $geo_taxonomy_name = 'bgeo_tags';
 
 	public $admin = FALSE; // the admin object
-	public $tools = FALSE; // the tools object
 	public $yahoo = FALSE; // the yahoo object
 
 	public $apis = array(
@@ -36,6 +35,9 @@ class bGeo
 		'yahooapi' => FALSE,
 	);
 
+	/**
+	 * Construct!
+	 */
 	public function __construct()
 	{
 		global $wpdb;
@@ -44,13 +46,13 @@ class bGeo
 		$this->plugin_url = untrailingslashit( plugin_dir_url( __FILE__ ) );
 
 		// register scripts and styles on init, so they can be used elsewhere
-		add_action( 'init', array( $this , 'init' ), 1, 1 );
+		add_action( 'init', array( $this, 'init' ), 1, 1 );
 
 		// enqueue the registered scripts and styles
-		add_action( 'enqueue_scripts', array( $this , 'enqueue_scripts' ), 1, 1 );
+		add_action( 'enqueue_scripts', array( $this, 'enqueue_scripts' ), 1, 1 );
 
 		// add our custom geo taxonomy to the list of supported taxonomies
-		if( $this->options()->register_geo_taxonomy )
+		if ( $this->options()->register_geo_taxonomy )
 		{
 			$this->options()->taxonomies[] = $this->geo_taxonomy_name;
 		}
@@ -60,28 +62,32 @@ class bGeo
 		if ( is_admin() )
 		{
 			$this->admin();
-			$this->yahoo();
 		}
 
-	} // END __construct
+	}//end __construct
 
+	/**
+	 * Hooked to WP's init, does some setup
+	 */
 	public function init()
 	{
 		// the Leaflet JS library and style
 		// see http://leafletjs.com for more info
-		wp_register_style( $this->id_base . '-leaflet' , $this->plugin_url . '/external/leaflet/leaflet.css' , array() , $this->version );
+		wp_register_style( $this->id_base . '-leaflet', $this->plugin_url . '/external/leaflet/leaflet.css', array(), $this->version );
 		wp_register_script( $this->id_base . '-leaflet', $this->plugin_url . '/external/leaflet/leaflet.js', array( 'jquery' ), $this->version, TRUE );
 
 		// add our custom geo taxonomy to the list of supported taxonomies
-		if( $this->options()->register_geo_taxonomy )
+		if ( $this->options()->register_geo_taxonomy )
 		{
 			$this->register_taxonomy();
 		}
 
-		add_action( 'delete_term', array( $this , 'delete_term' ), 5, 4 );
-	}
+		add_action( 'delete_term', array( $this, 'delete_term' ), 5, 4 );
+	}//end init
 
-	// a singleton for the admin object
+	/**
+	 * An accessor for the admin object
+	 */
 	public function admin()
 	{
 		if ( ! $this->admin )
@@ -91,21 +97,11 @@ class bGeo
 		}
 
 		return $this->admin;
-	} // END admin
+	}//end admin
 
-	// a singleton for the tools object
-	public function tools()
-	{
-		if ( ! $this->tools )
-		{
-			require_once __DIR__ . '/class-bgeo-tools.php';
-			$this->tools = new bGeo_Tools();
-		}
-
-		return $this->tools;
-	} // END tools
-
-	// a singleton for the yahoo object
+	/**
+	 * An accessor for the yahoo api object
+	 */
 	public function yahoo()
 	{
 		if ( ! $this->yahoo )
@@ -115,9 +111,31 @@ class bGeo
 		}
 
 		return $this->yahoo;
-	} // END yahoo
+	}//end admin
 
-	// get options
+	/**
+	 * Instantiate and return a new geoPHP object
+	 * see https://github.com/phayes/geoPHP/wiki/API-Reference for docs on geoPHP
+	 *
+	 * This is used by various methods for converting between WKT and GeoJSON,
+	 * validating geo data, and puppies.
+	 */
+	public function new_geometry( $input, $adapter )
+	{
+		if ( ! class_exists( 'geoPHP' ) )
+		{
+			require_once __DIR__ . '/external/geoPHP/geoPHP.inc';
+			geoPHP::geosInstalled( FALSE ); // prevents a fatal in some cases; @TODO: why?
+		}
+
+		return geoPHP::load( $input, $adapter );
+	}//end new_geometry
+
+	/**
+	 * Get and return the configuration options
+	 *
+	 * options are checked once and cached in an object var.
+	 */
 	public function options()
 	{
 		if ( ! isset( $this->options ) )
@@ -130,22 +148,11 @@ class bGeo
 		}
 
 		return $this->options;
-	} // END options
+	}//end options
 
-	// get a new geometry object
-	// see https://github.com/phayes/geoPHP/wiki/API-Reference for docs on geoPHP
-	public function new_geometry( $input, $adapter )
-	{
-		if ( ! class_exists( 'geoPHP' ) )
-		{
-			require_once __DIR__ . '/external/geoPHP/geoPHP.inc';
-			geoPHP::geosInstalled( FALSE ); // prevents a fatal in some cases; @TODO: why?
-		}
-
-		return geoPHP::load( $input, $adapter );
-	}// END new_geometry
-
-	// get all the geos attached to a post
+	/**
+	 * get all the geos attached to a post
+	 */
 	public function get_object_geos( $post_id )
 	{
 		$terms = wp_get_object_terms( $post_id, $this->geo_taxonomy_name, array( 'fields' => 'ids' ) );
@@ -157,7 +164,7 @@ class bGeo
 		$geos = array();
 		foreach ( $terms as $term )
 		{
-			if( ! $geo = $this->get_geo( $term, $this->geo_taxonomy_name ) )
+			if ( ! $geo = $this->get_geo( $term, $this->geo_taxonomy_name ) )
 			{
 				continue;
 			}
@@ -166,9 +173,14 @@ class bGeo
 		}
 
 		return $geos;
-	}// END get_object_geos
+	}//end get_object_geos
 
-	// get the primary geos attached to a post
+	/**
+	 * Get just the primary geos attached to a post
+	 *
+	 * Primary geos are stored in postmeta. The geo terms attached to a post 
+	 * are usually far more numerous, because they include the belongtos
+	 */
 	public function get_object_primary_geos( $post_id )
 	{
 		$post_meta = $this->admin()->posts()->get_post_meta( $post_id );
@@ -184,7 +196,7 @@ class bGeo
 		$geos = array();
 		foreach ( $post_meta->primary as $temp )
 		{
-			$geo = $this->get_geo_by_api_id( $temp->api , $temp->api_id );
+			$geo = $this->get_geo_by_api_id( $temp->api, $temp->api_id );
 			if (
 				empty( $geo ) ||
 				is_wp_error( $geo )
@@ -194,15 +206,19 @@ class bGeo
 			}
 
 			$geos[ $geo->term_taxonomy_id ] = $geo;
-		}
+		}//end foreach
 
 		return $geos;
-	}// END get_object_geos
+	}//end get_object_primary_geos
 
-	// get a geo record
+	/**
+	 * get a geo record by taxonomy field/value pair
+	 *
+	 * @TODO: combine this with get_geo_by_api_id()
+	 * @TODO: this may be affected by WP 4.1+ taxonomy changes, see https://make.wordpress.org/core/2014/11/12/an-update-on-the-taxonomy-roadmap/
+	 */
 	public function get_geo_by( $field, $value, $taxonomy = NULL )
 	{
-
 		if ( ! $taxonomy )
 		{
 			$taxonomy = $this->geo_taxonomy_name;
@@ -219,12 +235,15 @@ class bGeo
 		}
 
 		return $this->get_geo( $term->term_id, $term->taxonomy );
-	}// END get_geo_by
+	}//end get_geo_by
 
-	// get a geo record
+	/**
+	 * get a geo record by term ID and taxonomy
+	 *
+	 * @TODO: this may be affected by WP 4.1+ taxonomy changes, see https://make.wordpress.org/core/2014/11/12/an-update-on-the-taxonomy-roadmap/
+	 */
 	public function get_geo( $term_id, $taxonomy = NULL )
 	{
-
 		if ( ! $taxonomy )
 		{
 			$taxonomy = $this->geo_taxonomy_name;
@@ -264,7 +283,7 @@ class bGeo
 		// convert the WKT string into geoJSON,
 		// also extract separate lat and lon values
 		$point = $this->new_geometry( $geo->point, 'wkt' );
-		if ( ! is_object( $point ))
+		if ( ! is_object( $point ) )
 		{
 			return FALSE;
 		}
@@ -309,17 +328,16 @@ class bGeo
 		$geo->belongtos = maybe_unserialize( $geo->belongtos );
 		$geo->api_raw = maybe_unserialize( $geo->api_raw );
 
-/*
-echo '<pre>';
-print_r( $geo );
-*/
-
 		// merge this with the term object and return
 		return (object) array_merge( (array) $term, (array) $geo );
 
 	}//end get_geo
 
-	// update a geo record
+	/**
+	 * Update or create a geo record
+	 *
+	 * @TODO: this may be affected by WP 4.1+ taxonomy changes, see https://make.wordpress.org/core/2014/11/12/an-update-on-the-taxonomy-roadmap/
+	 */
 	public function update_geo( $term_id, $taxonomy, $geo )
 	{
 		$old = $this->get_geo( $term_id, $taxonomy );
@@ -363,7 +381,7 @@ print_r( $geo );
 		)
 		{
 			$geo->bounds = '{"type":"Point","coordinates":[' . floatval( $geo->point_lon ) . ',' . floatval( $geo->point_lat ) . ']}';
-		}
+		}//end if
 
 		// check if we have bounds and if it appears to be json
 		if (
@@ -375,11 +393,11 @@ print_r( $geo );
 			// try to get a geo object for it
 			$bounds = $this->new_geometry( $geo->bounds, 'json' );
 
-			if( ! is_object( $bounds ) )
+			if ( ! is_object( $bounds ) )
 			{
 				$bounds = FALSE;
 				continue;
-			}
+			}//end if
 
 			// simplify the bounding geometry to an envelope
 			// this may be an over simplification that gets pealed back later
@@ -396,11 +414,11 @@ print_r( $geo );
 				$point = $envelope->getCentroid();
 				$geo->point_lat = $point->getY();
 				$geo->point_lon = $point->getX();
-			}
-		}
+			}//end if
+		}//end if
 
 		// validate that we have both point and bounds values
-		if ( ! isset( $geo->point_lat, $geo->point_lon, $geo->bounds ))
+		if ( ! isset( $geo->point_lat, $geo->point_lon, $geo->bounds ) )
 		{
 			return FALSE;
 		}
@@ -487,10 +505,13 @@ print_r( $wpdb );
 		}
 
 		return $this->get_geo( $term_id, $taxonomy );
-
 	}//end update_geo
 
-	// delete a geo record
+	/**
+	 * Delete a geo record
+	 *
+	 * @TODO: this may be affected by WP 4.1+ taxonomy changes, see https://make.wordpress.org/core/2014/11/12/an-update-on-the-taxonomy-roadmap/
+	 */
 	public function delete_geo( $term_id, $taxonomy, $deleted_term = FALSE )
 	{
 		// This method may be called in response to the delete_term hook,
@@ -505,7 +526,7 @@ print_r( $wpdb );
 		{
 			$term_taxonomy_id = $deleted_term->term_taxonomy_id;
 		}
-		elseif ( is_numeric( $deleted_term ))
+		elseif ( is_numeric( $deleted_term ) )
 		{
 			$term_taxonomy_id = $deleted_term;
 		}
@@ -531,29 +552,44 @@ print_r( $wpdb );
 		return $wpdb->query( $sql );
 	}//end delete_geo
 
-	public function delete_term( $term_id, $tt_id, $taxonomy, $deleted_term )
+	/**
+	 * Hooked to delete_term, deletes the corresponding geo record for a deleted term
+	 *
+	 * @TODO: this may be affected by WP 4.1+ taxonomy changes, see https://make.wordpress.org/core/2014/11/12/an-update-on-the-taxonomy-roadmap/
+	 */
+	public function delete_term( $term_id, $unused_tt_id, $taxonomy, $deleted_term )
 	{
 		// delete it
 		$this->delete_geo( $term_id, $taxonomy, $deleted_term );
-	}
+	}//end delete_term
 
-	// see get_term_by_ttid() in https://github.com/misterbisson/scriblio-authority/blob/master/components/class-authority-posttype.php#L893
-	// for my thoughts on why this is necessary
+	/**
+	 * Look up term/taxonomy by term_taxonomy_id
+	 *
+	 * See get_term_by_ttid() in https://github.com/misterbisson/scriblio-authority/blob/master/components/class-authority-posttype.php#L893
+	 * for my thoughts on why this is necessary
+	 *
+	 * @TODO: this may be affected by WP 4.1+ taxonomy changes, see https://make.wordpress.org/core/2014/11/12/an-update-on-the-taxonomy-roadmap/
+	 */
 	public function get_geo_by_ttid( $tt_id )
 	{
 		global $wpdb;
 		$term_id_and_tax = $wpdb->get_row( $wpdb->prepare( "SELECT term_id, taxonomy FROM $wpdb->term_taxonomy WHERE term_taxonomy_id = %d LIMIT 1", $tt_id ), OBJECT );
-		if( ! $term_id_and_tax )
+		if ( ! $term_id_and_tax )
 		{
 			$error = new WP_Error( 'invalid_ttid', 'Invalid term taxonomy ID' );
 			return $error;
 		}
 		return $this->get_geo( (int) $term_id_and_tax->term_id, $term_id_and_tax->taxonomy );
-	}
+	}//end get_geo_by_ttid
 
+	/**
+	 * Get a geo record for a given remote API and ID pair
+	 *
+	 * @TODO: combine with get_geo_by()
+	 */
 	public function get_geo_by_api_id( $api, $api_id )
 	{
-
 		// is this a valid API key?
 		if ( ! isset( $api, $api_id ) )
 		{
@@ -577,17 +613,22 @@ print_r( $wpdb );
 				AND api_id = %s
 			LIMIT 1", $api, $api_id ) );
 
-		if( ! $tt_id )
+		if ( ! $tt_id )
 		{
 			$error = new WP_Error( 'invalid_api_id', 'Invalid or unknown API ID' );
 			return $error;
 		}
 		return $this->get_geo_by_ttid( $tt_id );
-	}
+	}//end get_geo_by_api_id
 
+	/**
+	 * Create a new geo given a Yahoo! Where On Earth ID object
+	 *
+	 * @TODO: does this belong here, or in the yahoo class?
+	 * @TODO: can this be broken up into smaller pieces?
+	 */
 	public function new_geo_by_woeid( $woeid )
 	{
-
 		// sanity check the woeid
 		if ( ! is_numeric( $woeid ) )
 		{
@@ -661,7 +702,7 @@ print_r( $wpdb );
 
 		// get or create a term for this geo
 		$term_slug = (int) $geo->api_raw->woeid . '-' . sanitize_title_with_dashes( str_replace( array( '/', '_' ), ' ', $term_name ) );
-		if( ! $term = get_term_by( 'slug', $term_slug, $this->geo_taxonomy_name ) )
+		if ( ! $term = get_term_by( 'slug', $term_slug, $this->geo_taxonomy_name ) )
 		{
 			$new_term = (object) wp_insert_term( $term_name, $this->geo_taxonomy_name, array( 'slug' => $term_slug, 'description' => implode( ', ', $description_parts ) ) );
 			$term = get_term( $new_term->term_id, $this->geo_taxonomy_name );
@@ -686,11 +727,16 @@ print_r( $wpdb );
 		$this->update_geo( $term->term_id, $term->taxonomy, $geo );
 
 		return $this->get_geo( $term->term_id, $term->taxonomy );
-	}
+	}//end new_geo_by_woeid
 
+	/**
+	 * Create a new geo given a Yahoo! placefinder result object
+	 *
+	 * @TODO: does this belong here, or in the yahoo class?
+	 * @TODO: can this be broken up into smaller pieces?
+	 */
 	public function new_geo_by_yaddr( $yaddr_object )
 	{
-
 		// sanity check the yaddr
 		if ( ! is_object( $yaddr_object ) )
 		{
@@ -735,7 +781,7 @@ print_r( $wpdb );
 
 		// get or create a term for this geo
 		$term_slug = (int) $geo->api_raw->woeid . '-' . sanitize_title_with_dashes( str_replace( array( '/', '_' ), ' ', $term_name ) );
-		if( ! $term = get_term_by( 'slug', $term_slug, $this->geo_taxonomy_name ) )
+		if ( ! $term = get_term_by( 'slug', $term_slug, $this->geo_taxonomy_name ) )
 		{
 			$new_term = (object) wp_insert_term( $term_name, $this->geo_taxonomy_name, array( 'slug' => $term_slug, 'description' => 'address, ' . $geo->api_raw->country ) );
 			$term = get_term( $new_term->term_id, $this->geo_taxonomy_name );
@@ -759,8 +805,15 @@ print_r( $wpdb );
 
 		$this->update_geo( $term->term_id, $term->taxonomy, $geo );
 		return $this->get_geo( $term->term_id, $term->taxonomy );
-	}
+	}//end new_geo_by_yaddr
 
+	/**
+	 * get the "belongtos" of a API/ID pair
+	 *
+	 * Belongtos are geographies that contain another geography. California is a belongto of San Francisco.
+	 *
+	 * This is sort of specific to Yahoo! WOEIDs now, but the notion is the stored geo data could map across APIs, so a Foursquare location could have belongtos specified by WOEID.
+	 */
 	public function get_belongtos( $api, $api_id )
 	{
 
@@ -803,12 +856,18 @@ print_r( $wpdb );
 		}
 
 		return $belongtos;
-	}
+	}//end get_belongtos
 
+	/**
+	 * Register our custom taxonomy.
+	 *
+	 * History: an earlier plan for this plugin was that any taxonomy could be specified as having additional geo data attached. 
+	 * I've given up on that strategy and now pretty much assume we're just using our custom taxonomy.
+	 * Some of the geo getter and setter methods reflect this history in the arguments they expect.
+	 */
 	public function register_taxonomy()
 	{
-
-		$this->post_types = get_post_types( array( 'public' => TRUE , 'publicly_queryable' => TRUE , ) , 'names' , 'or' ); // trivia: 'pages' are public, but not publicly queryable
+		$this->post_types = get_post_types( array( 'public' => TRUE, 'publicly_queryable' => TRUE, ), 'names', 'or' ); // trivia: 'pages' are public, but not publicly queryable
 
 		register_taxonomy( $this->geo_taxonomy_name, $this->post_types, array(
 			'label' => 'Geographies',
@@ -838,18 +897,23 @@ print_r( $wpdb );
 			),
 		) );
 
-	} // END register_taxonomy
+	}//end register_taxonomy
 
-	// enqueue the scripts and styles
+	/**
+	 * Enqueue the Leaflet script and styles.
+	 *
+	 * @TODO: don't do this all the time and everywhere, maybe
+	 */
 	public function enqueue_scripts()
 	{
 		wp_enqueue_style( $this->id_base . '-leaflet' );
 		wp_enqueue_script( $this->id_base . '-leaflet' );
 	}//end enqueue_scripts
+}//end class
 
-} // END bGeo class
-
-// Singleton
+/**
+ * The singleton for this class
+ */
 function bgeo()
 {
 	global $bgeo;
@@ -860,4 +924,4 @@ function bgeo()
 	}
 
 	return $bgeo;
-} // END bgeo
+}//end bgeo

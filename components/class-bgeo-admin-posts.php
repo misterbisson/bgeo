@@ -21,17 +21,20 @@ class bGeo_Admin_Posts
 	 */
 	public function init()
 	{
-		add_action( 'admin_init', array( $this , 'admin_init' ) );
+		add_action( 'admin_init', array( $this, 'admin_init' ) );
 
 		add_action( 'save_post', array( $this, 'save_post' ), 10, 2 );
 		add_action( 'wp_ajax_bgeo-locationsfromtext', array( $this, 'ajax_locationsfromtext' ) );
 		add_action( 'wp_ajax_bgeo-locationlookup', array( $this, 'ajax_locationlookup' ) );
 	}//end init
 
+	/**
+	 * Keep the ball rolling on admin_init!
+	 */
 	public function admin_init()
 	{
 		// add any JS or CSS for the needed for the dashboard
-		add_action( 'admin_enqueue_scripts', array( $this , 'admin_enqueue_scripts' ) );
+		add_action( 'admin_enqueue_scripts', array( $this, 'admin_enqueue_scripts' ) );
 
 		//add the geo metabox to the posts
 		add_action( 'add_meta_boxes', array( $this, 'metaboxes' ), 10, 1 );
@@ -57,7 +60,7 @@ class bGeo_Admin_Posts
 				wp_enqueue_script(
 					'bgeo-angular',
 					'https://ajax.googleapis.com/ajax/libs/angularjs/1.3.2/angular.min.js',
-					array( ),
+					array(),
 					$this->bgeo->admin()->script_config()->version,
 					FALSE
 				);
@@ -86,10 +89,12 @@ class bGeo_Admin_Posts
 
 			default:
 				return;
-		}
+		}//end switch
 	}//end admin_enqueue_scripts
 
-	// should we add our metabox to this post type?
+	/**
+	 * Conditionally adds our metabox to posttypes specified in the whitelist
+	 */
 	public function metaboxes( $post_type )
 	{
 		// is this in our post type whitelist?
@@ -101,14 +106,16 @@ class bGeo_Admin_Posts
 		add_meta_box(
 			$this->bgeo->admin()->get_field_id( 'post-metabox' ),
 			'Locations',
-			array( $this , 'metabox' ),
+			array( $this, 'metabox' ),
 			$post_type,
 			'normal',
 			'high'
 		);
 	}//end metaboxes
 
-	// the metabox on posts
+	/**
+	 * the metabox on posts
+	 */
 	public function metabox( $post )
 	{
 		// must have this on the page in one of the metaboxes
@@ -134,8 +141,11 @@ class bGeo_Admin_Posts
 		// captures the $_POST var, and then passes it to
 		// bgeo()->update_meta(), where the data is sanitized and
 		// validated before saving
-	}//end metaboxe
+	}//end metabox
 
+	/**
+	 * Gets the taxonomy term IDs from geo objects, including the terms specified in the belongtos
+	 */
 	public function get_term_ids_from_geo( $geo )
 	{
 		if (
@@ -166,9 +176,11 @@ class bGeo_Admin_Posts
 		}
 
 		return $terms;
-	}
+	}//end get_term_ids_from_geo
 
-	// @TODO: this method will need to be refactored based on what we do in update_post_meta()
+	/**
+	 * A convenience method for core get_post_meta()
+	 */
 	public function get_post_meta( $post_id )
 	{
 		if ( ! $meta = get_post_meta( $post_id, $this->bgeo->id_base, TRUE ) )
@@ -177,8 +189,14 @@ class bGeo_Admin_Posts
 		} // END if
 
 		return (object) $meta;
-	} // END get_post_meta
+	}// END get_post_meta
 
+	/**
+	 * Takes as may be saved from the post metabox and saves it to the post.
+	 * For backwards compatibility with existing WP geodata practice, it also gets location information specified there.
+	 *
+	 * @TODO: this method should accept data directly from $this->get_post_meta() and losslessly save it.
+	 */
 	public function update_post_meta( $post_id, $meta )
 	{
 		$term_ids = $primary_geos = array();
@@ -210,9 +228,12 @@ class bGeo_Admin_Posts
 		update_post_meta( $post_id, $this->bgeo->id_base, (object) array(
 			'primary' => $primary_geos,
 		) );
-	} // END update_post_meta
+	}// END update_post_meta
 
-	public function save_post( $post_id, $post )
+	/**
+	 * Hooked to save_post to capture the contents of our metabox and save that data to the post
+	 */
+	public function save_post( $unused_post_id, $post )
 	{
 		// Check nonce
 		if ( ! $this->bgeo->admin()->verify_nonce() )
@@ -254,8 +275,7 @@ class bGeo_Admin_Posts
 	}// END save_post
 
 	/**
-	 * post_id is required
-	 * text is optional
+	 * An ajax wrapper for locationsfromtext()
 	 */
 	public function ajax_locationsfromtext()
 	{
@@ -305,11 +325,15 @@ class bGeo_Admin_Posts
 		}//end if
 
 		wp_send_json( $locations );
-	}//end ajax_locationsfromcontent
+	}//end ajax_locationsfromtext
 
 	/**
+	 * Gets suggested locations for a post based on the textual content of the post, or explicitely provided text.
+	 *
 	 * post_id is required
-	 * text is optional and can be inferred from the text of the post
+	 * text is optional, it will be taken from post content, excerpt, title, and tags if not provided.
+	 *
+	 * Uses _locationsfromtext(), see that for more info.
 	 */
 	public function locationsfromtext( $post_id, $text = NULL )
 	{
@@ -368,7 +392,15 @@ class bGeo_Admin_Posts
 		return $locations;
 	}//end locationsfromtext
 
-	public function _locationsfromtext( $text = NULL )
+	/**
+	 * A private helper method used by locationsfromtext()
+	 *
+	 * Calls the query to the YQL geo table to extract location entities from unstructured text,
+	 * then turn those into geo objects.
+	 *
+	 * The matches can return many low quality results, consider using the go-opencalais connector to improve relevance ranking.
+	 */
+	private function _locationsfromtext( $text = NULL )
 	{
 
 		// We need at least 3 chars to call this api
@@ -396,7 +428,6 @@ class bGeo_Admin_Posts
 		$locations = array();
 		foreach ( $raw_entities->matches->match as $raw_location )
 		{
-
 			// attempt to get the term for this woeid
 			$location = bgeo()->new_geo_by_woeid( $raw_location->place->woeId );
 
@@ -426,21 +457,27 @@ class bGeo_Admin_Posts
 					bgeo()->new_geo_by_woeid( $belongto->api_id );
 				}
 			}//end if
-		}
+		}//end foreach
 
 		return $locations;
 	}//end _locationsfromtext
 
+	/**
+	 * A callback to sort terms by relevance
+	 */
 	public function sort_by_relevance( $a, $b )
 	{
-		if( $a->relevance == $b->relevance )
+		if ( $a->relevance == $b->relevance )
 		{
 			return 0;
 		}
 
 		return $a->relevance < $b->relevance ? 1 : -1;
-	}
+	}//end sort_by_relevance
 
+	/**
+	 * An ajax wrapped for the location search method
+	 */
 	public function ajax_locationlookup()
 	{
 /*
@@ -472,8 +509,20 @@ class bGeo_Admin_Posts
 		}//end if
 
 		wp_send_json( $locations );
-	}//end ajax_locationsfromcontent
+	}//end ajax_locationlookup
 
+	/**
+	 * Get a location specified by an unstructure string
+	 * Uses Yahoo!'s YQL geo tables.
+	 *
+	 * If it can resolve the string to a location, it will be returned as a geo object.
+	 *
+	 * Examples:
+	 *
+	 * locationlookup( '504 Broadway San Francisco, CA' ); // returns a geo object for this specific address
+	 * locationlookup( 'San Francisco' ); // returns a geo object with the WOEID for the city of SF
+	 * locationlookup( '37.798, -122.40567', TRUE ); // returns a geo that should be same/similar to the address used in the first example
+	 */
 	public function locationlookup( $query = NULL, $reverse_geocode = FALSE )
 	{
 		// validate that we have a sring, and that it's at least 3 chars
@@ -516,7 +565,6 @@ class bGeo_Admin_Posts
 		// iterate through placefinder API results and add those to the return set
 		foreach ( $raw_result->Result as $raw_location )
 		{
-
 			// attempt to get the term for this yaddr
 			$location = bgeo()->new_geo_by_yaddr( $raw_location );
 
@@ -544,9 +592,8 @@ class bGeo_Admin_Posts
 					bgeo()->new_geo_by_woeid( $belongto->api_id );
 				}
 			}//end if
-		}
+		}//end foreach
 
 		return array_filter( $locations );
 	}//end locationlookup
-
-}//end bGeo_Admin_Posts class
+}//end class

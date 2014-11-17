@@ -23,13 +23,16 @@ class bGeo_Admin
 	public function __construct( $bgeo )
 	{
 		$this->bgeo = $bgeo;
-		add_action( 'admin_init', array( $this , 'admin_init' ) );
+		add_action( 'admin_init', array( $this, 'admin_init' ) );
 
 		$this->postmeta();
 		$this->posts();
 		$this->terms();
 	}//end __construct
 
+	/**
+	 * Function description
+	 */
 	// an accessor for the posts object
 	public function posts()
 	{
@@ -42,6 +45,9 @@ class bGeo_Admin
 		return $this->posts;
 	} // END posts
 
+	/**
+	 * Function description
+	 */
 	// an accessor for the postmeta object
 	public function postmeta()
 	{
@@ -52,8 +58,11 @@ class bGeo_Admin
 		}
 
 		return $this->postmeta;
-	} // END posts
+	} // END postmeta
 
+	/**
+	 * Function description
+	 */
 	// an accessor for the terms object
 	public function terms()
 	{
@@ -66,6 +75,9 @@ class bGeo_Admin
 		return $this->terms;
 	} // END terms
 
+	/**
+	 * Function description
+	 */
 	// an accessor for the go_opencalais integration object
 	public function go_opencalais()
 	{
@@ -99,7 +111,7 @@ class bGeo_Admin
 	/**
 	 * Setup scripts and check dependencies for the admin interface
 	 */
-	public function admin_enqueue_scripts( $hook_suffix )
+	public function admin_enqueue_scripts()
 	{
 		$this->check_dependencies();
 
@@ -157,6 +169,9 @@ class bGeo_Admin
 		<?php
 	}//end admin_notices
 
+	/**
+	 * Function description
+	 */
 	public function script_config()
 	{
 		if ( ! $this->script_config )
@@ -167,32 +182,47 @@ class bGeo_Admin
 		return $this->script_config;
 	}
 
+	/**
+	 * Function description
+	 */
 	public function nonce_field()
 	{
-		wp_nonce_field( plugin_basename( __FILE__ ) , $this->bgeo->id_base .'-nonce' );
+		wp_nonce_field( plugin_basename( __FILE__ ), $this->bgeo->id_base .'-nonce' );
 	}
 
+	/**
+	 * Function description
+	 */
 	public function verify_nonce()
 	{
-		return wp_verify_nonce( $_POST[ $this->bgeo->id_base .'-nonce' ] , plugin_basename( __FILE__ ));
+		return wp_verify_nonce( $_POST[ $this->bgeo->id_base .'-nonce' ], plugin_basename( __FILE__ ) );
 	}
 
+	/**
+	 * Function description
+	 */
 	public function get_field_name( $field_name )
 	{
 		return $this->bgeo->id_base . '[' . $field_name . ']';
 	}
 
+	/**
+	 * Function description
+	 */
 	public function get_field_id( $field_name )
 	{
 		return $this->bgeo->id_base . '-' . $field_name;
 	}
 
+	/**
+	 * Function description
+	 */
 	public function upgrade()
 	{
 		$options = get_option( $this->bgeo->id_base );
 
 		// initial activation and default options
-		if(
+		if (
 			! isset( $options['version']  ) ||
 			$this->bgeo->version > $options['version']
 		)
@@ -202,28 +232,31 @@ class bGeo_Admin
 
 			// set the options
 			$options['version'] = $this->bgeo->version;
-		}
+		}//end if
 
 		// replace the old options with the new ones
-		update_option( $this->bgeo->id_base , $options );
-	}
+		update_option( $this->bgeo->id_base, $options );
+	}//end upgrade
 
-	function create_table()
+	/**
+	 * Function description
+	 */
+	public function create_table()
 	{
 		global $wpdb;
 
-		if ( ! empty( $wpdb->charset ))
+		if ( ! empty( $wpdb->charset ) )
 		{
 			$charset_collate = 'DEFAULT CHARACTER SET '. $wpdb->charset;
 		}
-		if ( ! empty( $wpdb->collate ))
+		if ( ! empty( $wpdb->collate ) )
 		{
 			$charset_collate .= ' COLLATE '. $wpdb->collate;
 		}
 
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 
-		return dbDelta("
+		return dbDelta( "
 			CREATE TABLE " . $this->bgeo->table . " (
 				`term_taxonomy_id` bigint(20) unsigned NOT NULL,
 				`point` point NOT NULL DEFAULT '',
@@ -236,9 +269,8 @@ class bGeo_Admin
 				PRIMARY KEY (`term_taxonomy_id`),
 				SPATIAL KEY `point` (`point`),
 				SPATIAL KEY `bounds` (`bounds`),
-				KEY `api_and_api_id` (`api`(1),`api_id`(3))
+				KEY `api_and_api_id` (`api`(1),`api_id`(3) )
 			) ENGINE=MyISAM $charset_collate
-		");
-	}
-
-}//end bGeo_Admin class
+		" );
+	}//end create_table
+}//end class
