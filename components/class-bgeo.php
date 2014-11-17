@@ -866,7 +866,7 @@ print_r( $wpdb );
 		// get the belongto woeids
 		// play with this at https://developer.yahoo.com/yql/console/?q=select%20*%20from%20geo.placefinder%20where%20text%3D%22sfo%22#h=SELECT+woeid%2CplaceTypeName+FROM+geo.places.belongtos+WHERE+member_woeid+IN+(+%222486340%22%2C+%2255805667%22+)+AND+placeTypeName+NOT+IN+(%22Zone%22%2C+%22Time+Zone%22)
 		// See additional docs at https://developer.yahoo.com/boss/geo/docs/free_YQL.html and https://developer.yahoo.com/boss/geo/docs/geo-faq.html
-		$query = 'SELECT woeid,placeTypeName FROM geo.places.belongtos WHERE member_woeid IN ('. $api_id .') AND placeTypeName NOT IN ( "Zone", "Time Zone" )';
+		$query = 'SELECT woeid,placeTypeName FROM geo.places.belongtos WHERE member_woeid IN ('. $api_id .') AND placeTypeName NOT IN ( "Time Zone", "Zone", "Zip Code" )';
 		$api_raw = bgeo()->yahoo()->yql( $query );
 
 		// did we get anything?
