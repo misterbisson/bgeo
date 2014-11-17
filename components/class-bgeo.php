@@ -644,9 +644,9 @@ print_r( $wpdb );
 		}
 
 		// get all details for this WOEID
-		// play with this at https://developer.yahoo.com/yql/console/?q=select%20*%20from%20geo.placefinder%20where%20text%3D%22sfo%22#h=SELECT+*+FROM+geo.places+WHERE+woeid+IN+(+%2223512019%22+)
+		// play with this at https://developer.yahoo.com/yql/console/#h=SELECT+*+FROM+geo.places+WHERE+woeid+IN+(23512019)
 		// See additional docs at https://developer.yahoo.com/boss/geo/docs/free_YQL.html and https://developer.yahoo.com/boss/geo/docs/geo-faq.html
-		$query = 'SELECT * FROM geo.places WHERE woeid IN (SELECT woeid FROM geo.places WHERE woeid IN ('. $woeid .') )';
+		$query = 'SELECT * FROM geo.places WHERE woeid IN ('. $woeid .')';
 		$api_raw = bgeo()->yahoo()->yql( $query );
 
 		// sanity check the response
@@ -747,6 +747,7 @@ print_r( $wpdb );
 		}
 
 		// the WOEID is required
+		// @TODO: if the result includes lat/lon, but no WOEID, then repeat the query as a reverse geocode on that lat/lon
 		if ( empty( $yaddr_object->woeid ) )
 		{
 			$error = new WP_Error( 'invalid_yaddr', 'No WOEID present in the Yahoo address object' );
@@ -770,6 +771,7 @@ print_r( $wpdb );
 		$geo->api = 'yaddr';
 		$geo->api_raw = $yaddr_object;
 		$geo->api_id = $geo->api_raw->hash;
+		// @TODO: the WOEID in these results is often just a zip code, rather than a town name. We really need to do a second query to lookup the neighborhood/city/state/country into a better WOEID
 		$geo->belongtos = $this->get_belongtos( 'woeid', $geo->api_raw->woeid );
 
 		// whatsoever shall we name this geo?
