@@ -280,13 +280,12 @@ class bGeo_Admin_Posts
 	 */
 	public function ajax_locationsfromtext()
 	{
-/*
 		// Check nonce
-		if ( ! isset( $_REQUEST['nonce'] ) || ! wp_verify_nonce( $_REQUEST['nonce'], 'bgeo' ) )
+		if ( ! isset( $_GET['nonce'] ) || ! wp_verify_nonce( $_GET['nonce'], 'bgeo' ) )
 		{
 			wp_send_json_error( array( 'message' => 'You do not have permission to be here.' ) );
 		}// end if
-*/
+
 		// text may be passed in via POST
 		// ...is taken from post content otherwise
 		$text = NULL;
@@ -298,9 +297,9 @@ class bGeo_Admin_Posts
 			$text = wp_kses( $_REQUEST['text'], array() );
 		}//end if
 
-		if ( isset( $_REQUEST['post_id'] ) )
+		if ( isset( $_GET['post_id'] ) )
 		{
-			$post_id = absint( $_REQUEST['post_id'] );
+			$post_id = absint( $_GET['post_id'] );
 		}//end if
 
 		if ( ! $post_id )
@@ -481,13 +480,12 @@ class bGeo_Admin_Posts
 	 */
 	public function ajax_locationlookup()
 	{
-/*
 		// Check nonce
-		if ( ! isset( $_REQUEST['nonce'] ) || ! wp_verify_nonce( $_REQUEST['nonce'], 'bgeo' ) )
+		if ( ! isset( $_GET['nonce'] ) || ! wp_verify_nonce( $_GET['nonce'], 'bgeo' ) )
 		{
 			wp_send_json_error( array( 'message' => 'You do not have permission to be here.' ) );
 		}// end if
-*/
+
 		// the query string is required
 		$query = NULL;
 		if ( isset( $_GET['query'] ) )
