@@ -1,7 +1,8 @@
 <?php
 /*
-This class includes the admin UI components and metaboxes, and the supporting methods they require.
-*/
+ * This class allows adds a metabox to the post editor, hooks to save_post,
+ * and adds some methods for looking up geo locations used by that metabox.
+ */
 
 class bGeo_Admin_Posts
 {

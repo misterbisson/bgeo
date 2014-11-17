@@ -1,7 +1,8 @@
 <?php
 /*
-This class includes the admin UI components and metaboxes, and the supporting methods they require.
-*/
+ * This class allows adds a metabox to the term editor and hooks to created_term and edited_term (like save_post for terms).
+ * This is basically the admin UI to a handful of methods in the core bGeo class
+ */
 
 class bGeo_Admin_Terms
 {

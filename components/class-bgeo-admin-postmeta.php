@@ -1,7 +1,10 @@
 <?php
 /*
-This class includes the admin UI components and metaboxes, and the supporting methods they require.
-*/
+ * This class allows backwards compatibility with core WordPress geodata saved in postmeta
+ * see wp docs at http://codex.wordpress.org/Geodata for background.
+ *
+ * Any data found in postmeta is reverse geocoded into a geo object, and that geo object is attached to the post.
+ */
 
 class bGeo_Admin_Postmeta
 {

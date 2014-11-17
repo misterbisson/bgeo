@@ -1,4 +1,8 @@
 <?php
+/*
+ * This class presents bGeo data as facets in Scriblio.
+ * See https://github.com/misterbisson/scriblio
+ */
 
 class bGeo_Scriblio implements Facet
 {

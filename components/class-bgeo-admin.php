@@ -1,7 +1,8 @@
 <?php
 /*
-This class includes the admin UI components and metaboxes, and the supporting methods they require.
-*/
+ * This class provides a handful of convenience methods used by other code that only runs in the admin context,
+ * as well as object accessors for specific components, such as terms, posts, and postmeta classes.
+ */
 
 class bGeo_Admin
 {

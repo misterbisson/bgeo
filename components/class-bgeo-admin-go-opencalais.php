@@ -1,7 +1,8 @@
 <?php
 /*
-This class includes code to integrate with https://github.com/GigaOM/go-opencalais.
-*/
+ * This class leverages https://github.com/GigaOM/go-opencalais to improve the relevance of suggested locations.
+ * Use requires an OpenCalais key, see http://www.opencalais.com for more information about that service.
+ */
 
 class bGeo_Admin_GO_OpenCalais
 {
