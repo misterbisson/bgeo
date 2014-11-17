@@ -411,6 +411,8 @@ class bGeo_Admin_Posts
 
 		// check the API
 		// API results are cached in the underlying method
+		// play with this at https://developer.yahoo.com/yql/console/?q=SELECT%20*%20FROM%20geo.placemaker%20WHERE%20documentContent%20%3D%20%22They%20followed%20him%20to%20deepest%20Africa%20and%20found%20him%20there%2C%20in%20Timbuktu%22%20AND%0A%20%20%20%20%20%20documentType%3D%22text%2Fplain%22#h=SELECT+*+FROM+geo.placemaker+WHERE+documentContent+%3D+%22San+Francisco+is+the+Paris+of+the+west.+This+west+coast+jewel+of+a+city+is+unequalled+by+any.%22+AND+documentType%3D%22text%2Fplain%22
+		// See additional docs at https://developer.yahoo.com/boss/geo/docs/free_YQL.html and https://developer.yahoo.com/boss/geo/docs/geo-faq.html
 		// @TODO: reorder the final sanitization and move it out of the following line
 		$query = 'SELECT * FROM geo.placemaker WHERE documentContent = "' . str_replace( '"', '\'', wp_kses( remove_accents( wp_trim_words( $text, 900, '' ) ), array() ) ) . '" AND documentType="text/plain"';
 		$raw_entities = bgeo()->yahoo()->yql( $query );
@@ -524,45 +526,32 @@ class bGeo_Admin_Posts
 	 */
 	public function locationlookup( $query = NULL, $reverse_geocode = FALSE )
 	{
-		// validate that we have a sring, and that it's at least 3 chars
-		if (
-			! is_string( $query ) ||
-			3 > strlen( $query )
-		)
-		{
-			return FALSE;
-		}//end if
+		// pass this on to the helper method
+		$raw_results = $this->_locationlookup( $query, $reverse_geocode );
 
-		if ( $reverse_geocode )
+		// do an initial check through the results to see if we should automatically retry as a reverse geocode
+		foreach ( $raw_results as $raw_location )
 		{
-			$reverse_qflag = ' AND gflags="R"';
-		}
-		else
-		{
-			$reverse_qflag = '';
-		}
-
-		// check the placefinder API
-		// API results are cached in the underlying method
-		$query = 'SELECT * FROM geo.placefinder WHERE text = "' . str_replace( '"', '\'', $query ) . '"' . $reverse_qflag;
-		$raw_result = bgeo()->yahoo()->yql( $query );
-
-		if ( ! isset( $raw_result->Result ) )
-		{
-			return FALSE;
-		}//end if
-
-		if ( ! is_array( $raw_result->Result ) )
-		{
-			$raw_result->Result = array( $raw_result->Result );
-		}//end if
+			// try a reverse geocode if the initial query didn't return a usable result
+			if (
+				! isset( $raw_location->woeid ) &&
+				! $reverse_geocode &&
+				isset( $raw_location->latitude, $raw_location->longitude )
+			)
+			{
+				$raw_results = array_merge(
+					$raw_results,
+					$this->_locationlookup( $raw_location->latitude . ', ' . $raw_location->longitude, TRUE )
+				);
+			}//end if
+		}//end foreach
 
 		// get locations from the placemaker api (the two APIs are unioned below
 		// this API returns better results for colloquial queries, like "west coast
 		$locations = (array) $this->_locationsfromtext( $text );
 
 		// iterate through placefinder API results and add those to the return set
-		foreach ( $raw_result->Result as $raw_location )
+		foreach ( $raw_results as $raw_location )
 		{
 			// attempt to get the term for this yaddr
 			$location = bgeo()->new_geo_by_yaddr( $raw_location );
@@ -595,4 +584,48 @@ class bGeo_Admin_Posts
 
 		return array_filter( $locations );
 	}//end locationlookup
+
+	/**
+	 * Helper method to do the YQL query for locationlookup() and others
+	 */
+	public function _locationlookup( $query = NULL, $reverse_geocode = FALSE, $recursion = FALSE )
+	{
+		// validate that we have a sring, and that it's at least 3 chars
+		if (
+			! is_string( $query ) ||
+			3 > strlen( $query )
+		)
+		{
+			return FALSE;
+		}//end if
+
+		if ( $reverse_geocode )
+		{
+			$reverse_qflag = ' AND gflags="R"';
+		}
+		else
+		{
+			$reverse_qflag = '';
+		}
+
+		// check the placefinder API
+		// API results are cached in the underlying method
+		// play with this at https://developer.yahoo.com/yql/console/#h=select+*+from+geo.placefinder+where+text%3D%22russian+hill%22
+		// See additional docs at https://developer.yahoo.com/boss/geo/docs/free_YQL.html and https://developer.yahoo.com/boss/geo/docs/geo-faq.html
+		$query = 'SELECT * FROM geo.placefinder WHERE text = "' . str_replace( '"', '\'', $query ) . '"' . $reverse_qflag;
+		$raw_result = bgeo()->yahoo()->yql( $query );
+
+		if ( ! isset( $raw_result->Result ) )
+		{
+			return FALSE;
+		}//end if
+
+		if ( ! is_array( $raw_result->Result ) )
+		{
+			$raw_result->Result = array( $raw_result->Result );
+		}//end if
+
+		return $raw_result->Result;
+	}//end _locationlookup
+
 }//end class
