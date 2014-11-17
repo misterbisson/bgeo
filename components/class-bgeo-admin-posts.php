@@ -411,6 +411,8 @@ class bGeo_Admin_Posts
 
 		// check the API
 		// API results are cached in the underlying method
+		// play with this at https://developer.yahoo.com/yql/console/?q=SELECT%20*%20FROM%20geo.placemaker%20WHERE%20documentContent%20%3D%20%22They%20followed%20him%20to%20deepest%20Africa%20and%20found%20him%20there%2C%20in%20Timbuktu%22%20AND%0A%20%20%20%20%20%20documentType%3D%22text%2Fplain%22#h=SELECT+*+FROM+geo.placemaker+WHERE+documentContent+%3D+%22San+Francisco+is+the+Paris+of+the+west.+This+west+coast+jewel+of+a+city+is+unequalled+by+any.%22+AND+documentType%3D%22text%2Fplain%22
+		// See additional docs at https://developer.yahoo.com/boss/geo/docs/free_YQL.html and https://developer.yahoo.com/boss/geo/docs/geo-faq.html
 		// @TODO: reorder the final sanitization and move it out of the following line
 		$query = 'SELECT * FROM geo.placemaker WHERE documentContent = "' . str_replace( '"', '\'', wp_kses( remove_accents( wp_trim_words( $text, 900, '' ) ), array() ) ) . '" AND documentType="text/plain"';
 		$raw_entities = bgeo()->yahoo()->yql( $query );
@@ -544,6 +546,8 @@ class bGeo_Admin_Posts
 
 		// check the placefinder API
 		// API results are cached in the underlying method
+		// play with this at https://developer.yahoo.com/yql/console/#h=select+*+from+geo.placefinder+where+text%3D%22russian+hill%22
+		// See additional docs at https://developer.yahoo.com/boss/geo/docs/free_YQL.html and https://developer.yahoo.com/boss/geo/docs/geo-faq.html
 		$query = 'SELECT * FROM geo.placefinder WHERE text = "' . str_replace( '"', '\'', $query ) . '"' . $reverse_qflag;
 		$raw_result = bgeo()->yahoo()->yql( $query );
 

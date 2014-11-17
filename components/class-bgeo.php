@@ -644,6 +644,8 @@ print_r( $wpdb );
 		}
 
 		// get all details for this WOEID
+		// play with this at https://developer.yahoo.com/yql/console/?q=select%20*%20from%20geo.placefinder%20where%20text%3D%22sfo%22#h=SELECT+*+FROM+geo.places+WHERE+woeid+IN+(+%2223512019%22+)
+		// See additional docs at https://developer.yahoo.com/boss/geo/docs/free_YQL.html and https://developer.yahoo.com/boss/geo/docs/geo-faq.html
 		$query = 'SELECT * FROM geo.places WHERE woeid IN (SELECT woeid FROM geo.places WHERE woeid IN ('. $woeid .') )';
 		$api_raw = bgeo()->yahoo()->yql( $query );
 
@@ -831,6 +833,8 @@ print_r( $wpdb );
 		}
 
 		// get the belongto woeids
+		// play with this at https://developer.yahoo.com/yql/console/?q=select%20*%20from%20geo.placefinder%20where%20text%3D%22sfo%22#h=SELECT+woeid%2CplaceTypeName+FROM+geo.places.belongtos+WHERE+member_woeid+IN+(+%222486340%22%2C+%2255805667%22+)+AND+placeTypeName+NOT+IN+(%22Zone%22%2C+%22Time+Zone%22)
+		// See additional docs at https://developer.yahoo.com/boss/geo/docs/free_YQL.html and https://developer.yahoo.com/boss/geo/docs/geo-faq.html
 		$query = 'SELECT woeid,placeTypeName FROM geo.places.belongtos WHERE member_woeid IN ('. $api_id .') AND placeTypeName NOT IN ( "Zone", "Time Zone" )';
 		$api_raw = bgeo()->yahoo()->yql( $query );
 
