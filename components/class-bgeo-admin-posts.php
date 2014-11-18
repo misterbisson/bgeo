@@ -482,12 +482,13 @@ class bGeo_Admin_Posts
 	 */
 	public function ajax_locationlookup()
 	{
+/*
 		// Check nonce
 		if ( ! isset( $_GET['nonce'] ) || ! wp_verify_nonce( $_GET['nonce'], 'bgeo' ) )
 		{
 			wp_send_json_error( array( 'message' => 'You do not have permission to be here.' ) );
 		}// end if
-
+*/
 		// the query string is required
 		$query = NULL;
 		if ( isset( $_GET['query'] ) )
@@ -562,7 +563,7 @@ class bGeo_Admin_Posts
 			}//end if
 
 			// remove the raw woe object to conserve space
-			unset( $location->api_raw );
+//			unset( $location->api_raw );
 
 			$locations[ $location->term_taxonomy_id ] = $location;
 

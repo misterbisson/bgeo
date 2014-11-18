@@ -178,7 +178,7 @@ class bGeo
 	/**
 	 * Get just the primary geos attached to a post
 	 *
-	 * Primary geos are stored in postmeta. The geo terms attached to a post 
+	 * Primary geos are stored in postmeta. The geo terms attached to a post
 	 * are usually far more numerous, because they include the belongtos
 	 */
 	public function get_object_primary_geos( $post_id )
@@ -597,7 +597,6 @@ print_r( $wpdb );
 			return $error;
 		}
 
-
 		// is this a valid API key?
 		if ( ! isset( $this->apis[ $api ] ) )
 		{
@@ -748,7 +747,7 @@ print_r( $wpdb );
 
 		// Attempt to get a better WOEID by looking up the address parts
 		// Why? the WOEID in these results is often just a zip code, rather than a town name, resulting in ugly data
-		$better_woeid_query = implode( ', ', array_intersect_key(
+		$better_woeid_query = implode( ', ', array_filter( array_intersect_key(
 			(array) $yaddr_object,
 			array(
 				'neighborhood' => TRUE,
@@ -756,21 +755,11 @@ print_r( $wpdb );
 				'state' => TRUE,
 				'country' => TRUE,
 			)
-		) );
+		) ) );
 
-		if ( ! empty( $better_woeid_query ) )
+		if ( ! empty( $better_woeid_query ) && $yaddr_object->country  != $better_woeid_query )
 		{
-			$better_woeid_raw = $this->admin()->posts()->_locationlookup(
-				implode( ', ', array_intersect_key(
-					(array) $yaddr_object,
-					array(
-						'neighborhood' => TRUE,
-						'city' => TRUE,
-						'state' => TRUE,
-						'country' => TRUE,
-					)
-				) )
-			);
+			$better_woeid_raw = $this->admin()->posts()->_locationlookup( $better_woeid_query );
 			if ( isset( $better_woeid_raw[0]->woeid ) )
 			{
 				$yaddr_object->woeid = $better_woeid_raw[0]->woeid;
@@ -801,7 +790,13 @@ print_r( $wpdb );
 		$geo->api = 'yaddr';
 		$geo->api_raw = $yaddr_object;
 		$geo->api_id = $geo->api_raw->hash;
-		$geo->belongtos = $this->get_belongtos( 'woeid', $geo->api_raw->woeid );
+		$geo->belongtos = array_merge(
+			array( (object) array(
+				'api' => 'woeid',
+				'api_id' => $geo->api_raw->woeid,
+			) ),
+			$this->get_belongtos( 'woeid', $geo->api_raw->woeid )
+		);
 
 		// Whatsoever shall we name this geo?
 		$name_parts = array_intersect_key( (array) $geo->api_raw, array(
@@ -896,7 +891,7 @@ print_r( $wpdb );
 	/**
 	 * Register our custom taxonomy.
 	 *
-	 * History: an earlier plan for this plugin was that any taxonomy could be specified as having additional geo data attached. 
+	 * History: an earlier plan for this plugin was that any taxonomy could be specified as having additional geo data attached.
 	 * I've given up on that strategy and now pretty much assume we're just using our custom taxonomy.
 	 * Some of the geo getter and setter methods reflect this history in the arguments they expect.
 	 */
