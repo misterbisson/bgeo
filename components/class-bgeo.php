@@ -757,7 +757,11 @@ print_r( $wpdb );
 			)
 		) ) );
 
-		if ( ! empty( $better_woeid_query ) && $yaddr_object->country  != $better_woeid_query )
+		if (
+			11 == $yaddr_object->woetype &&
+			! empty( $better_woeid_query ) &&
+			$yaddr_object->country != $better_woeid_query
+		)
 		{
 			$better_woeid_raw = $this->admin()->posts()->_locationlookup( $better_woeid_query );
 			if ( isset( $better_woeid_raw[0]->woeid ) )
