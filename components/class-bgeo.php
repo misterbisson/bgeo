@@ -63,7 +63,6 @@ class bGeo
 		{
 			$this->admin();
 		}
-
 	}//end __construct
 
 	/**
@@ -83,6 +82,11 @@ class bGeo
 		}
 
 		add_action( 'delete_term', array( $this, 'delete_term' ), 5, 4 );
+
+		if ( defined( 'WP_CLI' ) && WP_CLI )
+		{
+			$this->wpcli();
+		}
 	}//end init
 
 	/**
@@ -97,6 +101,22 @@ class bGeo
 		}
 
 		return $this->admin;
+	}//end admin
+
+	/**
+	 * A loader for the WP:CLI class
+	 */
+	public function wpcli()
+	{
+		if ( ! $this->wpcli )
+		{
+			require_once __DIR__ . '/class-bgeo-wpcli.php';
+
+			// declare the class to WP:CLI
+			WP_CLI::add_command( 'bgeo', 'bGeo_Wpcli' );
+
+			$this->wpcli = TRUE;
+		}
 	}//end admin
 
 	/**
@@ -325,8 +345,8 @@ class bGeo
 		$geo->bounds = '{"type":"Feature","geometry":' . $bounds->out( 'json' ) . '}';
 
 		// unserialize the woe objects/arrays
-		$geo->belongtos = maybe_unserialize( $geo->belongtos );
 		$geo->api_raw = maybe_unserialize( $geo->api_raw );
+		$geo->belongtos = maybe_unserialize( $geo->belongtos );
 
 		// merge this with the term object and return
 		return (object) array_merge( (array) $term, (array) $geo );
@@ -846,14 +866,19 @@ print_r( $wpdb );
 	 *
 	 * This is sort of specific to Yahoo! WOEIDs now, but the notion is the stored geo data could map across APIs, so a Foursquare location could have belongtos specified by WOEID.
 	 */
-	public function get_belongtos( $api, $api_id )
+	public function get_belongtos( $api, $api_id, $recursion = FALSE )
 	{
-
 		// check for an existing geo object for this item
-		$existing = $this->get_geo_by_api_id( $api, $api_id );
-		if ( ! is_wp_error( $existing ) )
+		if ( ! $recursion )
 		{
-			return $existing->belongtos;
+			$existing = $this->get_geo_by_api_id( $api, $api_id );
+			if (
+				! is_wp_error( $existing ) &&
+				! empty( $existing->belongtos )
+			)
+			{
+				return $existing->belongtos;
+			}
 		}
 
 		// we can only look up belongtos by WOEID
@@ -862,10 +887,41 @@ print_r( $wpdb );
 			return array();
 		}
 
+		// get an array of belongto WOEIDs from a submethod
+		$belongto_woeids = $this->_get_belongtos( $api_id );
+		if ( empty( $belongto_woeids ) )
+		{
+			return array();
+		}
+
+		// one level of recursion to get additional belongto WOEIDs
+		if ( ! $recursion )
+		{
+			foreach ( $belongto_woeids as $woeid )
+			{
+				$belongto_woeids = array_merge( $belongto_woeids, wp_list_pluck( $this->get_belongtos( 'woeid', $woeid, TRUE ), 'api_id' ) );
+			}
+		}
+
+		// a final iteration to assemble the output array
+		$belongtos = array();
+		foreach ( $belongto_woeids as $temp )
+		{
+			$belongtos[] = (object) array(
+				'api' => 'woeid',
+				'api_id' => $temp,
+			);
+		}
+
+		return $belongtos;
+	}//end get_belongtos
+
+	public function _get_belongtos( $woeid )
+	{
 		// get the belongto woeids
 		// play with this at https://developer.yahoo.com/yql/console/?q=select%20*%20from%20geo.placefinder%20where%20text%3D%22sfo%22#h=SELECT+woeid%2CplaceTypeName+FROM+geo.places.belongtos+WHERE+member_woeid+IN+(+%222486340%22%2C+%2255805667%22+)+AND+placeTypeName+NOT+IN+(%22Zone%22%2C+%22Time+Zone%22)
 		// See additional docs at https://developer.yahoo.com/boss/geo/docs/free_YQL.html and https://developer.yahoo.com/boss/geo/docs/geo-faq.html
-		$query = 'SELECT woeid,placeTypeName FROM geo.places.belongtos WHERE member_woeid IN ('. $api_id .') AND placeTypeName NOT IN ( "Time Zone", "Zone", "Zip Code" )';
+		$query = 'SELECT woeid,placeTypeName FROM geo.places.belongtos WHERE member_woeid IN ('. $woeid .') AND placeTypeName NOT IN ( "Time Zone", "Zone", "Zip Code" )';
 		$api_raw = bgeo()->yahoo()->yql( $query );
 
 		// did we get anything?
@@ -881,14 +937,7 @@ print_r( $wpdb );
 			$api_raw->place = array( $belongtos->place );
 		}
 
-		foreach ( $api_raw->place as $temp )
-		{
-			$belongtos[] = (object) array(
-				'api' => 'woeid',
-				'api_id' => $temp->woeid,
-			);
-		}
-
+		$belongtos = wp_list_pluck( $api_raw->place, 'woeid' );
 		return $belongtos;
 	}//end get_belongtos
 

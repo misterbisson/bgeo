@@ -74,8 +74,10 @@ class bGeo_Test extends WP_UnitTestCase
 		// create our table
 		bgeo()->admin()->upgrade();
 
-		// attempt to create a geo with a bogus address
-		$this->assertTrue( is_wp_error( bgeo()->new_geo_by_yaddr( (object) array() ) ) );
+		// get some belongtos
+		$belongtos_orig = bgeo()->get_belongtos( 'woeid', 23512019 );
+		$this->assertTrue( is_array( $belongtos_orig ) );
+		$this->assertTrue( ! empty( $belongtos_orig ) );
 
 		// create a geo with a known good woeid
 		$new_geo = bgeo()->new_geo_by_woeid( 23512019 );
@@ -99,6 +101,9 @@ class bGeo_Test extends WP_UnitTestCase
 
 		// we've got an expected value inside it, right?
 		$this->assertTrue( isset( $previous_term->term_taxonomy_id ) );
+
+		// the belongtos match (by count) what we got earlier, right?
+		$this->assertTrue( count( $belongtos_orig ) == count( $previous_term->belongtos ) );
 
 	}//end test_terms_by_woeid
 
