@@ -63,6 +63,7 @@ class bGeo
 		{
 			$this->admin();
 		}
+
 	}//end __construct
 
 	/**
