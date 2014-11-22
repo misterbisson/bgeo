@@ -141,12 +141,12 @@ class bGeo
 	 * This is used by various methods for converting between WKT and GeoJSON,
 	 * validating geo data, and puppies.
 	 */
-	public function new_geometry( $input, $adapter )
+	public function new_geometry( $input, $adapter, $geos = FALSE )
 	{
 		if ( ! class_exists( 'geoPHP' ) )
 		{
 			require_once __DIR__ . '/external/geoPHP/geoPHP.inc';
-			geoPHP::geosInstalled( FALSE ); // prevents a fatal in some cases; @TODO: why?
+			geoPHP::geosInstalled( $geos ); // prevents a fatal in some cases; @TODO: why?
 		}
 
 		return geoPHP::load( $input, $adapter );
@@ -900,7 +900,7 @@ print_r( $wpdb );
 		{
 			foreach ( $belongto_woeids as $woeid )
 			{
-				$belongto_woeids = array_merge( $belongto_woeids, wp_list_pluck( $this->get_belongtos( 'woeid', $woeid, TRUE ), 'api_id' ) );
+				$belongto_woeids = array_filter( array_unique( array_merge( $belongto_woeids, wp_list_pluck( $this->get_belongtos( 'woeid', $woeid, TRUE ), 'api_id' ) ) ) );
 			}
 		}
 
