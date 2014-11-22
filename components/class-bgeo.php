@@ -83,6 +83,11 @@ class bGeo
 		}
 
 		add_action( 'delete_term', array( $this, 'delete_term' ), 5, 4 );
+
+		if ( defined( 'WP_CLI' ) && WP_CLI )
+		{
+			$this->wpcli();
+		}
 	}//end init
 
 	/**
@@ -97,6 +102,22 @@ class bGeo
 		}
 
 		return $this->admin;
+	}//end admin
+
+	/**
+	 * A loader for the WP:CLI class
+	 */
+	public function wpcli()
+	{
+		if ( ! $this->wpcli )
+		{
+			require_once __DIR__ . '/class-bgeo-wpcli.php';
+
+			// declare the class to WP:CLI
+			WP_CLI::add_command( 'bgeo', 'bGeo_Wpcli' );
+
+			$this->wpcli = TRUE;
+		}
 	}//end admin
 
 	/**
@@ -120,12 +141,12 @@ class bGeo
 	 * This is used by various methods for converting between WKT and GeoJSON,
 	 * validating geo data, and puppies.
 	 */
-	public function new_geometry( $input, $adapter )
+	public function new_geometry( $input, $adapter, $geos = FALSE )
 	{
 		if ( ! class_exists( 'geoPHP' ) )
 		{
 			require_once __DIR__ . '/external/geoPHP/geoPHP.inc';
-			geoPHP::geosInstalled( FALSE ); // prevents a fatal in some cases; @TODO: why?
+			geoPHP::geosInstalled( $geos ); // prevents a fatal in some cases; @TODO: why?
 		}
 
 		return geoPHP::load( $input, $adapter );
@@ -178,7 +199,7 @@ class bGeo
 	/**
 	 * Get just the primary geos attached to a post
 	 *
-	 * Primary geos are stored in postmeta. The geo terms attached to a post 
+	 * Primary geos are stored in postmeta. The geo terms attached to a post
 	 * are usually far more numerous, because they include the belongtos
 	 */
 	public function get_object_primary_geos( $post_id )
@@ -325,8 +346,8 @@ class bGeo
 		$geo->bounds = '{"type":"Feature","geometry":' . $bounds->out( 'json' ) . '}';
 
 		// unserialize the woe objects/arrays
-		$geo->belongtos = maybe_unserialize( $geo->belongtos );
 		$geo->api_raw = maybe_unserialize( $geo->api_raw );
+		$geo->belongtos = maybe_unserialize( $geo->belongtos );
 
 		// merge this with the term object and return
 		return (object) array_merge( (array) $term, (array) $geo );
@@ -597,7 +618,6 @@ print_r( $wpdb );
 			return $error;
 		}
 
-
 		// is this a valid API key?
 		if ( ! isset( $this->apis[ $api ] ) )
 		{
@@ -748,7 +768,7 @@ print_r( $wpdb );
 
 		// Attempt to get a better WOEID by looking up the address parts
 		// Why? the WOEID in these results is often just a zip code, rather than a town name, resulting in ugly data
-		$better_woeid_query = implode( ', ', array_intersect_key(
+		$better_woeid_query = implode( ', ', array_filter( array_intersect_key(
 			(array) $yaddr_object,
 			array(
 				'neighborhood' => TRUE,
@@ -756,21 +776,15 @@ print_r( $wpdb );
 				'state' => TRUE,
 				'country' => TRUE,
 			)
-		) );
+		) ) );
 
-		if ( ! empty( $better_woeid_query ) )
+		if (
+			11 == $yaddr_object->woetype &&
+			! empty( $better_woeid_query ) &&
+			$yaddr_object->country != $better_woeid_query
+		)
 		{
-			$better_woeid_raw = $this->admin()->posts()->_locationlookup(
-				implode( ', ', array_intersect_key(
-					(array) $yaddr_object,
-					array(
-						'neighborhood' => TRUE,
-						'city' => TRUE,
-						'state' => TRUE,
-						'country' => TRUE,
-					)
-				) )
-			);
+			$better_woeid_raw = $this->admin()->posts()->_locationlookup( $better_woeid_query );
 			if ( isset( $better_woeid_raw[0]->woeid ) )
 			{
 				$yaddr_object->woeid = $better_woeid_raw[0]->woeid;
@@ -801,7 +815,13 @@ print_r( $wpdb );
 		$geo->api = 'yaddr';
 		$geo->api_raw = $yaddr_object;
 		$geo->api_id = $geo->api_raw->hash;
-		$geo->belongtos = $this->get_belongtos( 'woeid', $geo->api_raw->woeid );
+		$geo->belongtos = array_merge(
+			array( (object) array(
+				'api' => 'woeid',
+				'api_id' => $geo->api_raw->woeid,
+			) ),
+			$this->get_belongtos( 'woeid', $geo->api_raw->woeid )
+		);
 
 		// Whatsoever shall we name this geo?
 		$name_parts = array_intersect_key( (array) $geo->api_raw, array(
@@ -847,14 +867,19 @@ print_r( $wpdb );
 	 *
 	 * This is sort of specific to Yahoo! WOEIDs now, but the notion is the stored geo data could map across APIs, so a Foursquare location could have belongtos specified by WOEID.
 	 */
-	public function get_belongtos( $api, $api_id )
+	public function get_belongtos( $api, $api_id, $recursion = FALSE )
 	{
-
 		// check for an existing geo object for this item
-		$existing = $this->get_geo_by_api_id( $api, $api_id );
-		if ( ! is_wp_error( $existing ) )
+		if ( ! $recursion )
 		{
-			return $existing->belongtos;
+			$existing = $this->get_geo_by_api_id( $api, $api_id );
+			if (
+				! is_wp_error( $existing ) &&
+				! empty( $existing->belongtos )
+			)
+			{
+				return $existing->belongtos;
+			}
 		}
 
 		// we can only look up belongtos by WOEID
@@ -863,10 +888,41 @@ print_r( $wpdb );
 			return array();
 		}
 
+		// get an array of belongto WOEIDs from a submethod
+		$belongto_woeids = $this->_get_belongtos( $api_id );
+		if ( empty( $belongto_woeids ) )
+		{
+			return array();
+		}
+
+		// one level of recursion to get additional belongto WOEIDs
+		if ( ! $recursion )
+		{
+			foreach ( $belongto_woeids as $woeid )
+			{
+				$belongto_woeids = array_filter( array_unique( array_merge( $belongto_woeids, wp_list_pluck( $this->get_belongtos( 'woeid', $woeid, TRUE ), 'api_id' ) ) ) );
+			}
+		}
+
+		// a final iteration to assemble the output array
+		$belongtos = array();
+		foreach ( $belongto_woeids as $temp )
+		{
+			$belongtos[] = (object) array(
+				'api' => 'woeid',
+				'api_id' => $temp,
+			);
+		}
+
+		return $belongtos;
+	}//end get_belongtos
+
+	public function _get_belongtos( $woeid )
+	{
 		// get the belongto woeids
 		// play with this at https://developer.yahoo.com/yql/console/?q=select%20*%20from%20geo.placefinder%20where%20text%3D%22sfo%22#h=SELECT+woeid%2CplaceTypeName+FROM+geo.places.belongtos+WHERE+member_woeid+IN+(+%222486340%22%2C+%2255805667%22+)+AND+placeTypeName+NOT+IN+(%22Zone%22%2C+%22Time+Zone%22)
 		// See additional docs at https://developer.yahoo.com/boss/geo/docs/free_YQL.html and https://developer.yahoo.com/boss/geo/docs/geo-faq.html
-		$query = 'SELECT woeid,placeTypeName FROM geo.places.belongtos WHERE member_woeid IN ('. $api_id .') AND placeTypeName NOT IN ( "Time Zone", "Zone", "Zip Code" )';
+		$query = 'SELECT woeid,placeTypeName FROM geo.places.belongtos WHERE member_woeid IN ('. $woeid .') AND placeTypeName NOT IN ( "Time Zone", "Zone", "Zip Code" )';
 		$api_raw = bgeo()->yahoo()->yql( $query );
 
 		// did we get anything?
@@ -882,21 +938,14 @@ print_r( $wpdb );
 			$api_raw->place = array( $belongtos->place );
 		}
 
-		foreach ( $api_raw->place as $temp )
-		{
-			$belongtos[] = (object) array(
-				'api' => 'woeid',
-				'api_id' => $temp->woeid,
-			);
-		}
-
+		$belongtos = wp_list_pluck( $api_raw->place, 'woeid' );
 		return $belongtos;
 	}//end get_belongtos
 
 	/**
 	 * Register our custom taxonomy.
 	 *
-	 * History: an earlier plan for this plugin was that any taxonomy could be specified as having additional geo data attached. 
+	 * History: an earlier plan for this plugin was that any taxonomy could be specified as having additional geo data attached.
 	 * I've given up on that strategy and now pretty much assume we're just using our custom taxonomy.
 	 * Some of the geo getter and setter methods reflect this history in the arguments they expect.
 	 */
